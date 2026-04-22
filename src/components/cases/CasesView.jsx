@@ -57,12 +57,29 @@ export default function CasesView({ planId }) {
     }
   }, [panelWidth]);
 
+  function selectCase(id) {
+    setSelectedId(id);
+    if (id) {
+      history.replaceState({}, '', `?plan=${encodeURIComponent(planId)}&case=${encodeURIComponent(id)}`);
+    } else {
+      history.replaceState({}, '', `?plan=${encodeURIComponent(planId)}`);
+    }
+  }
+
+  const isFirstLoad = useRef(true);
+
   const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await casesApi.list(planId);
       setCases(res.cases || []);
+      if (isFirstLoad.current) {
+        isFirstLoad.current = false;
+        const params = new URLSearchParams(window.location.search);
+        const caseParam = params.get('case');
+        if (caseParam) setSelectedId(caseParam);
+      }
     } catch (e) {
       setError(String(e.message || e));
     } finally {
@@ -234,7 +251,7 @@ export default function CasesView({ planId }) {
             <CasesTable
               cases={filtered}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={selectCase}
             />
           )}
         </div>
@@ -260,7 +277,7 @@ export default function CasesView({ planId }) {
               <CaseDetailPanel
                 planId={planId}
                 caseItem={selectedCase}
-                onClose={() => setSelectedId(null)}
+                onClose={() => selectCase(null)}
                 onUpdated={handleCaseUpdated}
                 onRunsChanged={reload}
               />

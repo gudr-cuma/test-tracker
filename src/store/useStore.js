@@ -78,8 +78,14 @@ export const useStore = create((set, get) => ({
   currentTab: 'cases',
 
   setHomeTab: (tab) => set({ homeTab: tab }),
-  setCurrentPlan: (id) => set({ currentPlanId: id, currentTab: 'cases', dialog: null }),
-  goHome: () => set({ currentPlanId: null, dialog: null }),
+  setCurrentPlan: (id) => {
+    history.replaceState({}, '', `?plan=${encodeURIComponent(id)}`);
+    set({ currentPlanId: id, currentTab: 'cases', dialog: null });
+  },
+  goHome: () => {
+    history.replaceState({}, '', window.location.pathname);
+    set({ currentPlanId: null, dialog: null });
+  },
   setTab: (tab) => set({ currentTab: tab }),
 
   // ── Dialogs & toasts ───────────────────────────────────────────
