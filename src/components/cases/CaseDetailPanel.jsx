@@ -6,7 +6,7 @@ import RunsTimeline from '../runs/RunsTimeline.jsx';
 import Button from '../shared/Button.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Spinner from '../shared/Spinner.jsx';
-import StatusBadge from '../shared/StatusBadge.jsx';
+import StatusTrail from '../shared/StatusTrail.jsx';
 
 const FIELDS = [
   ['title', 'Titre'],
@@ -26,11 +26,13 @@ export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated, 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [draft, setDraft] = useState(() => buildDraft(caseItem));
+  const [runsForTrail, setRunsForTrail] = useState([]);
 
   useEffect(() => {
     setDraft(buildDraft(caseItem));
     setEditMode(false);
     setError(null);
+    setRunsForTrail([]);
   }, [caseItem?.id]);
 
   async function handleSave() {
@@ -69,7 +71,7 @@ export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated, 
             <code className="rounded bg-fv-bg-secondary px-1.5 py-0.5 font-mono text-xs text-fv-text">
               {caseItem.id}
             </code>
-            <StatusBadge status={caseItem.latest_status} size="sm" />
+            <StatusTrail runs={runsForTrail} fallbackStatus={caseItem.latest_status} />
             {caseItem.source === 'manual' ? (
               <span className="rounded bg-fv-orange-light px-1.5 py-0.5 text-[11px] font-semibold text-fv-orange-dark">
                 Manuel
@@ -150,6 +152,7 @@ export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated, 
           planId={planId}
           caseId={caseItem.id}
           onChanged={onRunsChanged}
+          onRunsChange={setRunsForTrail}
         />
       </div>
 

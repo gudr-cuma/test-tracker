@@ -13,13 +13,15 @@ import StatusSelect from './StatusSelect.jsx';
  * lifecycle. When a run is created / updated / deleted, it invokes
  * `onChanged` so the parent can refresh the cases list aggregates.
  */
-export default function RunsTimeline({ planId, caseId, onChanged }) {
+export default function RunsTimeline({ planId, caseId, onChanged, onRunsChange }) {
   const showToast = useStore((s) => s.showToast);
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busyIds, setBusyIds] = useState(new Set());
   const [creating, setCreating] = useState(false);
+
+  useEffect(() => { onRunsChange?.(runs); }, [runs, onRunsChange]);
 
   const reload = useCallback(async () => {
     setLoading(true);
