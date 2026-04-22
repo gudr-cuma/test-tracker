@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { casesApi } from '../../api/resources.js';
 import { useStore } from '../../store/useStore.js';
+import CommentsPanel from '../comments/CommentsPanel.jsx';
 import RunsTimeline from '../runs/RunsTimeline.jsx';
 import Button from '../shared/Button.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
@@ -139,15 +140,17 @@ export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated, 
           ))}
         </dl>
 
+        <CommentsPanel
+          targetType="case"
+          targetId={caseItem.id}
+          title="Commentaires du cas"
+        />
+
         <RunsTimeline
           planId={planId}
           caseId={caseItem.id}
           onChanged={onRunsChanged}
         />
-
-        <div className="mt-6 rounded-md border border-dashed border-fv-border px-4 py-3 text-xs text-fv-text-secondary">
-          Les commentaires (fil sur le cas + fil par run) arrivent au lot 4e.
-        </div>
       </div>
 
       <footer className="flex items-center justify-end gap-2 border-t border-fv-border bg-fv-bg-secondary px-5 py-3">

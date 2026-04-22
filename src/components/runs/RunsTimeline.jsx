@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { runsApi } from '../../api/resources.js';
 import { formatDateTime } from '../../engine/formatUtils.js';
 import { useStore } from '../../store/useStore.js';
+import CommentsPanel from '../comments/CommentsPanel.jsx';
 import Button from '../shared/Button.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Spinner from '../shared/Spinner.jsx';
@@ -133,6 +134,9 @@ export default function RunsTimeline({ planId, caseId, onChanged }) {
 }
 
 function RunRow({ run, busy, onStatusChange, onDelete }) {
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(null);
+
   return (
     <li className="rounded-md border border-fv-border bg-white p-3">
       <div className="flex items-start justify-between gap-3">
@@ -162,6 +166,25 @@ function RunRow({ run, busy, onStatusChange, onDelete }) {
         <MetaRow label="Démarré" value={formatDateTime(run.started_at)} />
         <MetaRow label="Terminé" value={formatDateTime(run.completed_at)} />
       </dl>
+
+      <button
+        type="button"
+        onClick={() => setCommentsOpen((v) => !v)}
+        className="mt-2 inline-flex items-center gap-1 rounded px-1 text-xs font-medium text-fv-text-secondary hover:text-fv-orange focus:outline-none focus-visible:ring-1 focus-visible:ring-fv-orange"
+        aria-expanded={commentsOpen}
+      >
+        <span aria-hidden="true">{commentsOpen ? '▾' : '▸'}</span>
+        Commentaires{commentCount != null ? ` (${commentCount})` : ''}
+      </button>
+
+      {commentsOpen ? (
+        <CommentsPanel
+          targetType="run"
+          targetId={run.id}
+          compact
+          onCountChange={setCommentCount}
+        />
+      ) : null}
     </li>
   );
 }
