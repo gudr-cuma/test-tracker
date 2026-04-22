@@ -2,7 +2,7 @@ import { useStore } from './store/useStore.js';
 import AppShell from './components/layout/AppShell.jsx';
 import PlansList from './components/plans/PlansList.jsx';
 import PlanDetail from './components/plans/PlanDetail.jsx';
-import ImportDialogPlaceholder from './components/import/ImportDialogPlaceholder.jsx';
+import ImportDialog from './components/import/ImportDialog.jsx';
 
 export default function App() {
   const currentPlanId = useStore((s) => s.currentPlanId);
@@ -11,7 +11,9 @@ export default function App() {
   return (
     <AppShell>
       {currentPlanId ? <PlanDetail /> : <PlansList />}
-      {dialog?.type === 'import' ? <ImportDialogPlaceholder /> : null}
+      {dialog?.type === 'import' ? (
+        <ImportDialog planIdContext={currentPlanId} />
+      ) : null}
     </AppShell>
   );
 }
