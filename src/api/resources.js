@@ -17,11 +17,23 @@ export const importApi = {
 };
 
 // ─── Cases ──────────────────────────────────────────────────────────
+// Note: POST /api/cases expects snake_case body (`plan_id`) matching D1
+// column names, while import endpoints use camelCase. Don't unify — just
+// map here.
 export const casesApi = {
   list: (planId) =>
     api.get(`/api/cases?plan=${encodeURIComponent(planId)}`),
-  create: (planId, data) =>
-    api.post('/api/cases', { planId, ...data }),
+  create: (planId, { id, family, title, preconditions, steps, expected, priority }) =>
+    api.post('/api/cases', {
+      plan_id: planId,
+      id,
+      family,
+      title,
+      preconditions,
+      steps,
+      expected,
+      priority,
+    }),
   update: (planId, caseId, patch) =>
     api.patch(
       `/api/cases/${encodeURIComponent(caseId)}?plan=${encodeURIComponent(planId)}`,
@@ -35,8 +47,13 @@ export const runsApi = {
     api.get(
       `/api/runs?plan=${encodeURIComponent(planId)}&case=${encodeURIComponent(caseId)}`,
     ),
-  create: (planId, caseId, data) =>
-    api.post('/api/runs', { planId, caseId, ...data }),
+  create: (planId, caseId, { status = 'a-faire', tester_id } = {}) =>
+    api.post('/api/runs', {
+      plan_id: planId,
+      case_id: caseId,
+      status,
+      tester_id,
+    }),
   update: (runId, patch) =>
     api.patch(`/api/runs/${encodeURIComponent(runId)}`, patch),
   delete: (runId) =>
@@ -50,7 +67,11 @@ export const commentsApi = {
       `/api/comments?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`,
     ),
   create: (targetType, targetId, body) =>
-    api.post('/api/comments', { targetType, targetId, body }),
+    api.post('/api/comments', {
+      target_type: targetType,
+      target_id: targetId,
+      body,
+    }),
 };
 
 // ─── Testers ────────────────────────────────────────────────────────

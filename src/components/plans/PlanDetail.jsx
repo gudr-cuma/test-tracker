@@ -1,31 +1,28 @@
 import { useStore } from '../../store/useStore.js';
+import CasesView from '../cases/CasesView.jsx';
 import TabNav from '../layout/TabNav.jsx';
 import EmptyState from '../shared/EmptyState.jsx';
 
 /**
  * Plan detail view with tab navigation.
- * Phase 4a: placeholders for each tab. Cases + dashboard content arrive
- * in subsequent lots.
+ * - Cases tab: full table + detail panel + manual create (lot 4c).
+ * - Dashboard tab: placeholder, wired in Phase 6.
  */
 export default function PlanDetail() {
   const currentTab = useStore((s) => s.currentTab);
+  const currentPlanId = useStore((s) => s.currentPlanId);
 
   return (
     <div className="flex min-h-full flex-col">
       <TabNav />
-      <div className="flex-1 p-6">
-        {currentTab === 'cases' ? <CasesPlaceholder /> : <DashboardPlaceholder />}
+      <div className="flex min-h-0 flex-1 flex-col p-6">
+        {currentTab === 'cases' ? (
+          <CasesView planId={currentPlanId} />
+        ) : (
+          <DashboardPlaceholder />
+        )}
       </div>
     </div>
-  );
-}
-
-function CasesPlaceholder() {
-  return (
-    <EmptyState
-      title="Cas de test — à venir"
-      description="Le tableau des cas sera branché au prochain lot (4c). Vous pourrez ouvrir chaque cas pour voir la timeline des runs et les commentaires."
-    />
   );
 }
 
