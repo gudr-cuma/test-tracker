@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { importApi } from '../../api/resources.js';
+import { parseXlsx } from '../../lib/parseXlsx.js';
 import { useStore } from '../../store/useStore.js';
 import Button from '../shared/Button.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
@@ -11,16 +12,16 @@ import Dropzone from './Dropzone.jsx';
 /**
  * Import flow:
  *
- *   pick  ──(file read)──▶  dry-run (loading)  ──▶  preview
- *                              │                        │
- *                              └──(error)──▶ pick       │
- *                                                       ▼
- *                                          apply (loading) ──▶ done
- *                                                       │
- *                                                       └─(error)─▶ preview
+ *   pick  ──(file read)──▶  dry-running (loading)  ──▶  preview
+ *                              │                           │
+ *                              └──(error)──▶ pick          │
+ *                                                          ▼
+ *                                           apply (loading) ──▶ done
+ *                                                          │
+ *                                                          └─(error)─▶ preview
  *
- * When `planIdContext` is provided, the flow imports into that plan
- * (update mode). Otherwise, a new plan is created.
+ * Supports both .md (markdown) and .xlsx (Excel) files.
+ * Excel files are parsed client-side before being sent to the server.
  */
 export default function ImportDialog({ planIdContext = null }) {
   const closeDialog = useStore((s) => s.closeDialog);
@@ -30,7 +31,8 @@ export default function ImportDialog({ planIdContext = null }) {
 
   const [phase, setPhase] = useState('pick'); // pick | dry-running | preview | applying
   const [error, setError] = useState(null);
-  const [file, setFile] = useState(null); // { md, filename }
+  const [file, setFile] = useState(null); // { md?, buffer?, filename, type }
+  const [parsedCases, setParsedCases] = useState(null); // { title, cases } for xlsx path
   const [preview, setPreview] = useState(null); // { mode, plan?, parsed, diff }
   const [acceptedAdded, setAcceptedAdded] = useState(new Set());
   const [acceptedChanged, setAcceptedChanged] = useState(new Set());
@@ -43,12 +45,30 @@ export default function ImportDialog({ planIdContext = null }) {
     (async () => {
       setPhase('dry-running');
       setError(null);
+
+      let payload;
+      if (file.type === 'xlsx') {
+        let parsed;
+        try {
+          const titleFromFile = file.filename.replace(/\.xlsx$/i, '');
+          parsed = parseXlsx(file.buffer, titleFromFile);
+        } catch (e) {
+          if (!cancelled) {
+            setError(String(e.message || e));
+            setPhase('pick');
+            setFile(null);
+          }
+          return;
+        }
+        setParsedCases(parsed);
+        payload = { cases: parsed.cases, title: parsed.title, planId: planIdContext ?? undefined };
+      } else {
+        setParsedCases(null);
+        payload = { md: file.md, filename: file.filename, planId: planIdContext ?? undefined };
+      }
+
       try {
-        const res = await importApi.dryRun({
-          md: file.md,
-          filename: file.filename,
-          planId: planIdContext ?? undefined,
-        });
+        const res = await importApi.dryRun(payload);
         if (cancelled) return;
         setPreview(res);
         setAcceptedAdded(new Set(res.diff.added.map((c) => c.id)));
@@ -69,6 +89,7 @@ export default function ImportDialog({ planIdContext = null }) {
 
   function resetToPick() {
     setFile(null);
+    setParsedCases(null);
     setPreview(null);
     setError(null);
     setAcceptedAdded(new Set());
@@ -116,10 +137,23 @@ export default function ImportDialog({ planIdContext = null }) {
     setPhase('applying');
     setError(null);
     try {
+      let payload;
+      if (file.type === 'xlsx' && parsedCases) {
+        payload = {
+          cases: parsedCases.cases,
+          title: parsedCases.title,
+          filename: file.filename,
+          planId: planIdContext ?? undefined,
+        };
+      } else {
+        payload = {
+          md: file.md,
+          filename: file.filename,
+          planId: planIdContext ?? undefined,
+        };
+      }
       const res = await importApi.apply({
-        md: file.md,
-        filename: file.filename,
-        planId: planIdContext ?? undefined,
+        ...payload,
         accepted: {
           addedIds: [...acceptedAdded],
           changedIds: [...acceptedChanged],
@@ -201,7 +235,7 @@ export default function ImportDialog({ planIdContext = null }) {
         <div className="flex flex-col items-center justify-center py-10">
           <Spinner size={28} />
           <p className="mt-3 text-sm text-fv-text-secondary">
-            Analyse du markdown…
+            Analyse du fichier…
           </p>
         </div>
       ) : null}
@@ -235,14 +269,17 @@ export default function ImportDialog({ planIdContext = null }) {
 
 function FileSummary({ file, preview }) {
   const existingTitle = preview.plan?.title;
+  const isXlsx = file.type === 'xlsx';
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-fv-border bg-fv-bg-secondary px-3 py-2 text-xs text-fv-text-secondary">
       <span>
-        📎 <span className="font-medium text-fv-text">{file.filename}</span>
+        {isXlsx ? '📊' : '📎'}{' '}
+        <span className="font-medium text-fv-text">{file.filename}</span>
       </span>
       <span>
-        Titre parsé&nbsp;:{' '}
+        Titre&nbsp;:{' '}
         <span className="font-medium text-fv-text">{preview.parsed.title}</span>
+        {isXlsx ? <span className="ml-1 text-fv-text-secondary">(depuis nom du fichier)</span> : null}
       </span>
       <span>
         Cas parsés&nbsp;:{' '}

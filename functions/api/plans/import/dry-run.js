@@ -7,14 +7,21 @@ export async function onRequest(context) {
 
   const body = await readJson(context.request);
   if (!body) return error(400, 'invalid JSON body');
-  const { md, filename, planId } = body;
-  if (!md || typeof md !== 'string') return error(400, '`md` is required (string)');
+  const { md, filename, planId, cases: incomingCases, title: incomingTitle } = body;
 
   let parsed;
-  try {
-    parsed = parseMarkdown(md);
-  } catch (e) {
-    return error(400, 'markdown parse error', String(e.message || e));
+  if (incomingCases && Array.isArray(incomingCases)) {
+    if (!incomingTitle || typeof incomingTitle !== 'string') {
+      return error(400, '`title` est requis quand `cases` est fourni');
+    }
+    parsed = { title: incomingTitle, cases: incomingCases };
+  } else {
+    if (!md || typeof md !== 'string') return error(400, '`md` is required (string)');
+    try {
+      parsed = parseMarkdown(md);
+    } catch (e) {
+      return error(400, 'markdown parse error', String(e.message || e));
+    }
   }
 
   // No planId → treat everything as new.

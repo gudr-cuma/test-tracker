@@ -5,15 +5,32 @@ export const plansApi = {
   list: () => api.get('/api/plans'),
   get: (id, { withMd = false } = {}) =>
     api.get(`/api/plans/${encodeURIComponent(id)}${withMd ? '?md=1' : ''}`),
+  update: (id, patch) => api.patch(`/api/plans/${encodeURIComponent(id)}`, patch),
   archive: (id) => api.delete(`/api/plans/${encodeURIComponent(id)}`),
 };
 
-// ─── Import (markdown diff) ────────────────────────────────────────
+// ─── Import (markdown ou excel) ────────────────────────────────────
 export const importApi = {
-  dryRun: ({ md, filename, planId }) =>
-    api.post('/api/plans/import/dry-run', { md, filename, planId }),
-  apply: ({ md, filename, planId, accepted }) =>
-    api.post('/api/plans/import/apply', { md, filename, planId, accepted }),
+  dryRun: ({ md, filename, planId, cases, title }) =>
+    api.post('/api/plans/import/dry-run', { md, filename, planId, cases, title }),
+  apply: ({ md, filename, planId, accepted, cases, title }) =>
+    api.post('/api/plans/import/apply', { md, filename, planId, accepted, cases, title }),
+};
+
+// ─── Tools ──────────────────────────────────────────────────────────
+export const toolsApi = {
+  list: () => api.get('/api/tools'),
+  create: (body) => api.post('/api/tools', body),
+  update: (id, patch) => api.patch(`/api/tools/${encodeURIComponent(id)}`, patch),
+  delete: (id) => api.delete(`/api/tools/${encodeURIComponent(id)}`),
+};
+
+// ─── Projects ───────────────────────────────────────────────────────
+export const projectsApi = {
+  list: () => api.get('/api/projects'),
+  create: (body) => api.post('/api/projects', body),
+  update: (id, patch) => api.patch(`/api/projects/${encodeURIComponent(id)}`, patch),
+  delete: (id) => api.delete(`/api/projects/${encodeURIComponent(id)}`),
 };
 
 // ─── Cases ──────────────────────────────────────────────────────────

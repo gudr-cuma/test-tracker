@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { plansApi } from '../api/resources.js';
+import { plansApi, toolsApi, projectsApi } from '../api/resources.js';
 
 /**
  * Global UI state for Test Tracker.
@@ -36,10 +36,48 @@ export const useStore = create((set, get) => ({
 
   refreshPlans: () => get().loadPlans({ force: true }),
 
+  // ── Tools ──────────────────────────────────────────────────────
+  tools: [],
+  toolsLoading: false,
+  toolsError: null,
+  toolsLoadedOnce: false,
+
+  loadTools: async ({ force = false } = {}) => {
+    if (!force && (get().toolsLoading || get().toolsLoadedOnce)) return;
+    set({ toolsLoading: true, toolsError: null });
+    try {
+      const data = await toolsApi.list();
+      set({ tools: data.tools || [], toolsLoading: false, toolsLoadedOnce: true });
+    } catch (e) {
+      set({ toolsError: String(e.message || e), toolsLoading: false });
+    }
+  },
+  refreshTools: () => get().loadTools({ force: true }),
+
+  // ── Projects ───────────────────────────────────────────────────
+  projects: [],
+  projectsLoading: false,
+  projectsError: null,
+  projectsLoadedOnce: false,
+
+  loadProjects: async ({ force = false } = {}) => {
+    if (!force && (get().projectsLoading || get().projectsLoadedOnce)) return;
+    set({ projectsLoading: true, projectsError: null });
+    try {
+      const data = await projectsApi.list();
+      set({ projects: data.projects || [], projectsLoading: false, projectsLoadedOnce: true });
+    } catch (e) {
+      set({ projectsError: String(e.message || e), projectsLoading: false });
+    }
+  },
+  refreshProjects: () => get().loadProjects({ force: true }),
+
   // ── Navigation ─────────────────────────────────────────────────
+  homeTab: 'plans',
   currentPlanId: null,
   currentTab: 'cases',
 
+  setHomeTab: (tab) => set({ homeTab: tab }),
   setCurrentPlan: (id) => set({ currentPlanId: id, currentTab: 'cases', dialog: null }),
   goHome: () => set({ currentPlanId: null, dialog: null }),
   setTab: (tab) => set({ currentTab: tab }),

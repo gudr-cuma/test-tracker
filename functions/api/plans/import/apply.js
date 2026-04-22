@@ -23,14 +23,24 @@ export async function onRequest(context) {
 
   const body = await readJson(context.request);
   if (!body) return error(400, 'invalid JSON body');
-  const { md, filename, planId: inputPlanId, accepted } = body;
-  if (!md || typeof md !== 'string') return error(400, '`md` is required (string)');
+  const { md, filename, planId: inputPlanId, accepted, cases: incomingCases, title: incomingTitle } = body;
 
   let parsed;
-  try {
-    parsed = parseMarkdown(md);
-  } catch (e) {
-    return error(400, 'markdown parse error', String(e.message || e));
+  let importSource;
+  if (incomingCases && Array.isArray(incomingCases)) {
+    if (!incomingTitle || typeof incomingTitle !== 'string') {
+      return error(400, '`title` est requis quand `cases` est fourni');
+    }
+    parsed = { title: incomingTitle, cases: incomingCases };
+    importSource = 'excel';
+  } else {
+    if (!md || typeof md !== 'string') return error(400, '`md` is required (string)');
+    try {
+      parsed = parseMarkdown(md);
+    } catch (e) {
+      return error(400, 'markdown parse error', String(e.message || e));
+    }
+    importSource = 'markdown';
   }
 
   const db = context.env.DB;
@@ -44,17 +54,17 @@ export async function onRequest(context) {
       db.prepare(
         `INSERT INTO plans (id, title, md_filename, md_content, last_imported_at, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ).bind(planId, parsed.title, filename || null, md, ts, ts, ts),
+      ).bind(planId, parsed.title, filename || null, importSource === 'markdown' ? md : null, ts, ts, ts),
     );
     const versionId = uuid();
     statements.push(
       db.prepare(
         `INSERT INTO plan_versions (id, plan_id, md_content, imported_at, summary)
          VALUES (?, ?, ?, ?, ?)`,
-      ).bind(versionId, planId, md, ts, `${parsed.cases.length} added`),
+      ).bind(versionId, planId, importSource === 'markdown' ? md : null, ts, `${parsed.cases.length} added`),
     );
     for (const c of parsed.cases) {
-      statements.push(caseInsertStatement(db, planId, c, 'markdown', ts));
+      statements.push(caseInsertStatement(db, planId, c, importSource, ts));
       statements.push(
         db.prepare(
           `INSERT INTO case_changes
@@ -92,7 +102,7 @@ export async function onRequest(context) {
     ).bind(
       versionId,
       inputPlanId,
-      md,
+      importSource === 'markdown' ? md : null,
       ts,
       `${acceptedAddedIds.size} added, ${acceptedChangedIds.size} changed, ${acceptedRemovedIds.size} removed`,
     ),
@@ -101,7 +111,7 @@ export async function onRequest(context) {
   let addedApplied = 0;
   for (const c of diff.added) {
     if (!acceptedAddedIds.has(c.id)) continue;
-    statements.push(caseInsertStatement(db, inputPlanId, c, 'markdown', ts));
+    statements.push(caseInsertStatement(db, inputPlanId, c, importSource, ts));
     statements.push(
       db.prepare(
         `INSERT INTO case_changes
@@ -179,7 +189,7 @@ export async function onRequest(context) {
          SET md_content = ?, md_filename = COALESCE(?, md_filename),
              last_imported_at = ?, updated_at = ?, title = ?
          WHERE id = ?`,
-    ).bind(md, filename || null, ts, ts, parsed.title, inputPlanId),
+    ).bind(importSource === 'markdown' ? md : null, filename || null, ts, ts, parsed.title, inputPlanId),
   );
 
   await db.batch(statements);

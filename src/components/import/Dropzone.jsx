@@ -1,14 +1,14 @@
 import { useRef, useState } from 'react';
 import Button from '../shared/Button.jsx';
 
-const MD_EXTENSIONS = /\.(md|markdown|txt)$/i;
+const ACCEPTED_EXTENSIONS = /\.(md|markdown|txt|xlsx)$/i;
 
 /**
- * Drag-drop + browse file picker. Accepts exactly one markdown-ish file.
+ * Drag-drop + browse file picker. Accepts one markdown or Excel file.
  *
  * Props:
- *  - onFile({ md: string, filename: string }) — called after successful read
- *  - onError(message)                         — called on rejection
+ *  - onFile({ md?, buffer?, filename, type: 'md'|'xlsx' }) — after successful read
+ *  - onError(message)
  *  - disabled
  */
 export default function Dropzone({ onFile, onError, disabled = false }) {
@@ -22,17 +22,22 @@ export default function Dropzone({ onFile, onError, disabled = false }) {
       return;
     }
     const file = fileList[0];
-    if (!MD_EXTENSIONS.test(file.name)) {
-      onError?.('Format non supporté. Attendu : .md, .markdown ou .txt.');
+    if (!ACCEPTED_EXTENSIONS.test(file.name)) {
+      onError?.('Format non supporté. Attendu : .md, .markdown, .txt ou .xlsx.');
       return;
     }
     try {
-      const md = await file.text();
-      if (!md.trim()) {
-        onError?.('Le fichier est vide.');
-        return;
+      if (/\.xlsx$/i.test(file.name)) {
+        const buffer = await file.arrayBuffer();
+        onFile?.({ buffer, filename: file.name, type: 'xlsx' });
+      } else {
+        const md = await file.text();
+        if (!md.trim()) {
+          onError?.('Le fichier est vide.');
+          return;
+        }
+        onFile?.({ md, filename: file.name, type: 'md' });
       }
-      onFile?.({ md, filename: file.name });
     } catch (e) {
       onError?.(`Lecture impossible : ${e.message || e}`);
     }
@@ -61,15 +66,15 @@ export default function Dropzone({ onFile, onError, disabled = false }) {
     >
       <div aria-hidden="true" className="text-3xl">📄</div>
       <p className="mt-3 text-sm font-medium text-fv-text">
-        Glisse un fichier markdown ici
+        Glisse un fichier ici
       </p>
       <p className="mt-1 text-xs text-fv-text-secondary">
-        ou clique pour le sélectionner — .md, .markdown, .txt
+        ou clique pour le sélectionner — .md, .markdown, .txt, .xlsx
       </p>
       <input
         ref={inputRef}
         type="file"
-        accept=".md,.markdown,.txt,text/markdown,text/plain"
+        accept=".md,.markdown,.txt,.xlsx,text/markdown,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
         disabled={disabled}

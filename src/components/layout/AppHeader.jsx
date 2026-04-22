@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { useStore, selectCurrentPlan } from '../../store/useStore.js';
 import Button from '../shared/Button.jsx';
+import PlanSettingsDialog from '../plans/PlanSettingsDialog.jsx';
 
 export default function AppHeader() {
   const plan = useStore(selectCurrentPlan);
+  const homeTab = useStore((s) => s.homeTab);
   const goHome = useStore((s) => s.goHome);
   const openDialog = useStore((s) => s.openDialog);
+
+  const [planSettings, setPlanSettings] = useState(false);
 
   return (
     <header className="flex items-center gap-4 border-b border-fv-border bg-white px-6 py-3">
@@ -25,24 +30,50 @@ export default function AppHeader() {
       {plan ? (
         <>
           <span aria-hidden="true" className="text-fv-text-secondary">/</span>
+          {plan.icon ? (
+            <span className="text-lg">{plan.icon}</span>
+          ) : null}
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium text-fv-text">
               {plan.title}
             </div>
-            {plan.md_filename ? (
+            {plan.project_name ? (
+              <div className="flex items-center gap-1 truncate text-xs text-fv-text-secondary">
+                <span style={{ color: plan.project_color }}>{plan.project_icon}</span>
+                <span>{plan.project_name}</span>
+              </div>
+            ) : plan.md_filename ? (
               <div className="truncate text-xs text-fv-text-secondary">
                 {plan.md_filename}
               </div>
             ) : null}
           </div>
+          <button
+            type="button"
+            title="Paramètres du plan"
+            onClick={() => setPlanSettings(true)}
+            className="rounded-md p-1.5 text-fv-text-secondary hover:bg-fv-bg-secondary hover:text-fv-text focus:outline-none focus-visible:ring-2 focus-visible:ring-fv-orange"
+          >
+            ⚙️
+          </button>
+          <Button variant="secondary" onClick={() => openDialog({ type: 'import' })}>
+            Ré-importer
+          </Button>
         </>
       ) : (
-        <div className="flex-1" />
+        <>
+          <div className="flex-1" />
+          {homeTab === 'plans' ? (
+            <Button variant="primary" onClick={() => openDialog({ type: 'import' })}>
+              Importer un cahier
+            </Button>
+          ) : null}
+        </>
       )}
 
-      <Button variant="primary" onClick={() => openDialog({ type: 'import' })}>
-        Importer un cahier
-      </Button>
+      {planSettings && plan ? (
+        <PlanSettingsDialog plan={plan} onClose={() => setPlanSettings(false)} />
+      ) : null}
     </header>
   );
 }

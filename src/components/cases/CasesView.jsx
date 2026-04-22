@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { casesApi } from '../../api/resources.js';
+import { useStore, selectCurrentPlan } from '../../store/useStore.js';
+import { exportCasesToXlsx } from '../../lib/exportXlsx.js';
 import Button from '../shared/Button.jsx';
 import EmptyState from '../shared/EmptyState.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
@@ -31,6 +33,7 @@ function loadPanelWidth() {
  * and persisted in localStorage.
  */
 export default function CasesView({ planId }) {
+  const plan = useStore(selectCurrentPlan);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -206,6 +209,13 @@ export default function CasesView({ planId }) {
           <span className="text-xs text-fv-text-secondary tabular-nums">
             {filtered.length} / {cases.length}
           </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => exportCasesToXlsx(plan?.title ?? 'plan', cases.filter((c) => !c.removed_from_md))}
+          >
+            ⬇ Export xlsx
+          </Button>
           <Button variant="primary" onClick={() => setNewCaseOpen(true)}>
             + Nouveau cas
           </Button>
