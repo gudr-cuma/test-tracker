@@ -160,6 +160,7 @@ export default function CasesView({ planId }) {
               caseItem={selectedCase}
               onClose={() => setSelectedId(null)}
               onUpdated={handleCaseUpdated}
+              onRunsChanged={reload}
             />
           </div>
         ) : null}

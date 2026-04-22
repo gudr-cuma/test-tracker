@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { casesApi } from '../../api/resources.js';
 import { useStore } from '../../store/useStore.js';
+import RunsTimeline from '../runs/RunsTimeline.jsx';
 import Button from '../shared/Button.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Spinner from '../shared/Spinner.jsx';
@@ -18,7 +19,7 @@ const FIELDS = [
 const MULTI_LINE = new Set(['preconditions', 'steps', 'expected']);
 const SHORT = new Set(['family', 'priority']);
 
-export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated }) {
+export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated, onRunsChanged }) {
   const showToast = useStore((s) => s.showToast);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -138,8 +139,14 @@ export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated }
           ))}
         </dl>
 
+        <RunsTimeline
+          planId={planId}
+          caseId={caseItem.id}
+          onChanged={onRunsChanged}
+        />
+
         <div className="mt-6 rounded-md border border-dashed border-fv-border px-4 py-3 text-xs text-fv-text-secondary">
-          La timeline des runs et les commentaires arrivent au lot 4d/4e.
+          Les commentaires (fil sur le cas + fil par run) arrivent au lot 4e.
         </div>
       </div>
 
