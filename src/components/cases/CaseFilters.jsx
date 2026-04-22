@@ -16,6 +16,7 @@ export default function CaseFilters({
   family, onFamilyChange,
   status, onStatusChange,
   sourceFilter, onSourceFilterChange,
+  bugFilter, onBugFilterChange,
 }) {
   const families = useMemo(() => {
     const set = new Set();
@@ -52,6 +53,17 @@ export default function CaseFilters({
         {STATUS_OPTIONS.map(([value, label]) => (
           <option key={value || 'all'} value={value}>{label}</option>
         ))}
+      </select>
+
+      <select
+        value={bugFilter}
+        onChange={(e) => onBugFilterChange(e.target.value)}
+        className="rounded-md border border-fv-border bg-white px-2.5 py-1.5 text-sm text-fv-text focus:border-fv-orange focus:outline-none focus:ring-1 focus:ring-fv-orange"
+        aria-label="Filtre bugs"
+      >
+        <option value="">Avec ou sans bug</option>
+        <option value="with">Avec bug(s)</option>
+        <option value="without">Sans bug</option>
       </select>
 
       <select
