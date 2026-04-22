@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { plansApi } from '../../api/resources.js';
 import { useStore } from '../../store/useStore.js';
 import { COLOR_PALETTE, ICON_SUGGESTIONS } from '../../lib/palette.js';
@@ -20,8 +20,7 @@ export default function PlanSettingsDialog({ plan, onClose }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
 
-  // Load projects on first open if not already loaded
-  if (!projectsLoadedOnce) loadProjects();
+  useEffect(() => { loadProjects(); }, [loadProjects]);
 
   async function handleSubmit(e) {
     e.preventDefault();
