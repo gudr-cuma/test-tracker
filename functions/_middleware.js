@@ -1,18 +1,50 @@
 /**
- * Cloudflare Pages Functions middleware.
+ * Resolves (or creates) the tester matching the Cloudflare Access identity
+ * and attaches it to `context.data.tester`. Exposes the D1 binding as
+ * `context.data.db` for ergonomics.
  *
- * Responsibilities:
- *  1. Read the Cloudflare Access identity header and resolve / create the
- *     matching `testers` row. The resolved tester is attached to
- *     `context.data.tester` so downstream handlers can stamp author_id
- *     without re-querying.
- *  2. Expose the D1 binding as `context.data.db` for ergonomics.
- *
- * NOTE: stub for Phase 1. The concrete implementation lands in Phase 3.
+ * Local dev (no Access header) falls back to the seeded Guillaume row so
+ * you can hit the API with curl / the Vite dev server without Access.
  */
+const ACCESS_HEADER = 'Cf-Access-Authenticated-User-Email';
+const FALLBACK_TESTER_ID = 'tester-guillaume';
+
+async function resolveTester(db, email) {
+  if (!email) {
+    return db
+      .prepare('SELECT * FROM testers WHERE id = ?')
+      .bind(FALLBACK_TESTER_ID)
+      .first();
+  }
+
+  const existing = await db
+    .prepare('SELECT * FROM testers WHERE email = ?')
+    .bind(email)
+    .first();
+  if (existing) return existing;
+
+  const id = `tester-${crypto.randomUUID()}`;
+  const name = email.split('@')[0];
+  await db
+    .prepare(
+      'INSERT INTO testers (id, name, email, active) VALUES (?, ?, ?, 1)',
+    )
+    .bind(id, name, email)
+    .run();
+  return { id, name, email, active: 1 };
+}
+
 export async function onRequest(context) {
-  context.data.db = context.env.DB;
-  // TODO Phase 3: resolve tester from Cf-Access-Authenticated-User-Email.
-  context.data.tester = null;
-  return context.next();
+  const { request, env, data, next } = context;
+  data.db = env.DB;
+  try {
+    const email = request.headers.get(ACCESS_HEADER);
+    data.tester = await resolveTester(env.DB, email);
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ error: 'tester resolution failed', details: String(err) }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  return next();
 }
