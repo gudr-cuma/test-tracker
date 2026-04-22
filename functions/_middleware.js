@@ -1,50 +1,56 @@
-/**
- * Resolves (or creates) the tester matching the Cloudflare Access identity
- * and attaches it to `context.data.tester`. Exposes the D1 binding as
- * `context.data.db` for ergonomics.
- *
- * Local dev (no Access header) falls back to the seeded Guillaume row so
- * you can hit the API with curl / the Vite dev server without Access.
- */
-const ACCESS_HEADER = 'Cf-Access-Authenticated-User-Email';
-const FALLBACK_TESTER_ID = 'tester-guillaume';
+import { getSessionId } from './_lib/session.js';
 
-async function resolveTester(db, email) {
-  if (!email) {
-    return db
-      .prepare('SELECT * FROM testers WHERE id = ?')
-      .bind(FALLBACK_TESTER_ID)
-      .first();
-  }
-
-  const existing = await db
-    .prepare('SELECT * FROM testers WHERE email = ?')
-    .bind(email)
-    .first();
-  if (existing) return existing;
-
-  const id = `tester-${crypto.randomUUID()}`;
-  const name = email.split('@')[0];
-  await db
-    .prepare(
-      'INSERT INTO testers (id, name, email, active) VALUES (?, ?, ?, 1)',
-    )
-    .bind(id, name, email)
-    .run();
-  return { id, name, email, active: 1 };
-}
+const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/bootstrap'];
 
 export async function onRequest(context) {
   const { request, env, data, next } = context;
   data.db = env.DB;
-  try {
-    const email = request.headers.get(ACCESS_HEADER);
-    data.tester = await resolveTester(env.DB, email);
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: 'tester resolution failed', details: String(err) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
-    );
+
+  const pathname = new URL(request.url).pathname;
+
+  if (PUBLIC_PATHS.includes(pathname)) {
+    return next();
   }
+
+  const sessionId = getSessionId(request);
+  if (!sessionId) {
+    return new Response(JSON.stringify({ error: 'Non authentifié' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const row = await env.DB.prepare(`
+    SELECT u.id, u.email, u.name, u.is_admin, u.can_import, u.admin_plans
+    FROM sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.id = ?
+      AND s.is_revoked = 0
+      AND s.expires_at > datetime('now')
+      AND u.is_active = 1
+  `).bind(sessionId).first();
+
+  if (!row) {
+    return new Response(JSON.stringify({ error: 'Session expirée ou invalide' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  context.waitUntil(
+    env.DB.prepare("UPDATE sessions SET last_seen = datetime('now') WHERE id = ?")
+      .bind(sessionId).run(),
+  );
+
+  data.user = row;
+  data.sessionId = sessionId;
+
+  if (pathname.startsWith('/api/admin/') && !row.is_admin) {
+    return new Response(JSON.stringify({ error: 'Accès refusé' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   return next();
 }

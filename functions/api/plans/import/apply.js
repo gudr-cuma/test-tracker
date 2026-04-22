@@ -21,6 +21,10 @@ function caseInsertStatement(db, planId, c, source, ts) {
 export async function onRequest(context) {
   if (context.request.method !== 'POST') return methodNotAllowed(['POST']);
 
+  if (!context.data.user?.can_import) {
+    return error(403, 'Vous n\'avez pas le droit d\'importer un cahier de test');
+  }
+
   const body = await readJson(context.request);
   if (!body) return error(400, 'invalid JSON body');
   const { md, filename, planId: inputPlanId, accepted, cases: incomingCases, title: incomingTitle } = body;
@@ -50,11 +54,12 @@ export async function onRequest(context) {
   // ─── New plan ───────────────────────────────────────────────────────
   if (!inputPlanId) {
     const planId = uuid();
+    const ownerId = context.data.user?.id || null;
     statements.push(
       db.prepare(
-        `INSERT INTO plans (id, title, md_filename, md_content, last_imported_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ).bind(planId, parsed.title, filename || null, importSource === 'markdown' ? md : null, ts, ts, ts),
+        `INSERT INTO plans (id, title, md_filename, md_content, last_imported_at, owner_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(planId, parsed.title, filename || null, importSource === 'markdown' ? md : null, ts, ownerId, ts, ts),
     );
     const versionId = uuid();
     statements.push(

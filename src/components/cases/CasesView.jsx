@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { casesApi } from '../../api/resources.js';
 import { useStore, selectCurrentPlan } from '../../store/useStore.js';
+import { useAuthStore } from '../../store/useAuthStore.js';
 import { exportCasesToXlsx } from '../../lib/exportXlsx.js';
 import Button from '../shared/Button.jsx';
 import EmptyState from '../shared/EmptyState.jsx';
@@ -34,6 +35,7 @@ function loadPanelWidth() {
  */
 export default function CasesView({ planId }) {
   const plan = useStore(selectCurrentPlan);
+  const canImport = useAuthStore((s) => s.user?.can_import);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

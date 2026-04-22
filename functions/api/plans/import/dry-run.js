@@ -5,6 +5,10 @@ import { diffCases } from '../../../../src/engine/diffCases.js';
 export async function onRequest(context) {
   if (context.request.method !== 'POST') return methodNotAllowed(['POST']);
 
+  if (!context.data.user?.can_import) {
+    return error(403, 'Vous n\'avez pas le droit d\'importer un cahier de test');
+  }
+
   const body = await readJson(context.request);
   if (!body) return error(400, 'invalid JSON body');
   const { md, filename, planId, cases: incomingCases, title: incomingTitle } = body;

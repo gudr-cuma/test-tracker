@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore, selectCurrentPlan } from '../../store/useStore.js';
+import { useAuthStore } from '../../store/useAuthStore.js';
 import Button from '../shared/Button.jsx';
 import PlanSettingsDialog from '../plans/PlanSettingsDialog.jsx';
 
@@ -8,6 +9,8 @@ export default function AppHeader() {
   const homeTab = useStore((s) => s.homeTab);
   const goHome = useStore((s) => s.goHome);
   const openDialog = useStore((s) => s.openDialog);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   const [planSettings, setPlanSettings] = useState(false);
 
@@ -56,20 +59,29 @@ export default function AppHeader() {
           >
             ⚙️
           </button>
-          <Button variant="secondary" onClick={() => openDialog({ type: 'import' })}>
-            Ré-importer
-          </Button>
+          {user?.can_import ? (
+            <Button variant="secondary" onClick={() => openDialog({ type: 'import' })}>
+              Ré-importer
+            </Button>
+          ) : null}
         </>
       ) : (
         <>
           <div className="flex-1" />
-          {homeTab === 'plans' ? (
+          {homeTab === 'plans' && user?.can_import ? (
             <Button variant="primary" onClick={() => openDialog({ type: 'import' })}>
               Importer un cahier
             </Button>
           ) : null}
         </>
       )}
+
+      <div className="ml-auto flex items-center gap-2 pl-4">
+        <span className="text-xs text-fv-text-secondary">{user?.name}</span>
+        <Button variant="ghost" size="sm" onClick={logout}>
+          Déconnexion
+        </Button>
+      </div>
 
       {planSettings && plan ? (
         <PlanSettingsDialog plan={plan} onClose={() => setPlanSettings(false)} />
