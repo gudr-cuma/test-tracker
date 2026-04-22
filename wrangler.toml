@@ -1,0 +1,15 @@
+name = "test-tracker"
+compatibility_date = "2026-04-01"
+pages_build_output_dir = "./dist"
+
+# Cloudflare D1 binding consumed by Pages Functions under ctx.env.DB
+# Replace `database_id` with the value returned by `wrangler d1 create test-tracker`
+[[d1_databases]]
+binding = "DB"
+database_name = "test-tracker"
+database_id = "REPLACE_ME_AFTER_D1_CREATE"
+migrations_dir = "migrations"
+
+# Local dev (wrangler pages dev) will use a local SQLite file at .wrangler/state/d1
+[vars]
+ENVIRONMENT = "development"
