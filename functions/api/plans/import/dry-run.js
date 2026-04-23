@@ -46,10 +46,14 @@ export async function onRequest(context) {
     .prepare('SELECT * FROM cases WHERE plan_id = ?')
     .bind(planId).all();
 
-  const { results: dbItems } = await context.env.DB
-    .prepare(`SELECT case_id, position, label FROM case_checklist_items
-              WHERE plan_id = ? ORDER BY case_id, position`)
-    .bind(planId).all();
+  let dbItems = [];
+  try {
+    const res = await context.env.DB
+      .prepare(`SELECT case_id, position, label FROM case_checklist_items
+                WHERE plan_id = ? ORDER BY case_id, position`)
+      .bind(planId).all();
+    dbItems = res.results;
+  } catch { /* table absente si migration non encore appliquée */ }
 
   const itemsByCase = new Map();
   for (const it of dbItems) {

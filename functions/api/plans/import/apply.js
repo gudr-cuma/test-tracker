@@ -73,6 +73,13 @@ export async function onRequest(context) {
   const ts = now();
   const statements = [];
 
+  // Détecte si la migration checklist a été appliquée.
+  let checklistSupported = false;
+  try {
+    await db.prepare('SELECT 1 FROM case_checklist_items LIMIT 0').run();
+    checklistSupported = true;
+  } catch { /* table absente */ }
+
   // ─── New plan ───────────────────────────────────────────────────────
   if (!inputPlanId) {
     const planId = uuid();
@@ -99,7 +106,7 @@ export async function onRequest(context) {
            VALUES (?, ?, ?, ?, 'added', NULL, NULL, ?, ?)`,
         ).bind(uuid(), planId, c.id, versionId, JSON.stringify(c), ts),
       );
-      if (Array.isArray(c.checklist) && c.checklist.length > 0) {
+      if (checklistSupported && Array.isArray(c.checklist) && c.checklist.length > 0) {
         for (const s of checklistReplaceStatements(db, planId, c.id, c.checklist, ts)) {
           statements.push(s);
         }
@@ -119,10 +126,16 @@ export async function onRequest(context) {
     .prepare('SELECT * FROM cases WHERE plan_id = ?')
     .bind(inputPlanId).all();
 
-  const { results: dbItems } = await db
-    .prepare(`SELECT case_id, position, label FROM case_checklist_items
-              WHERE plan_id = ? ORDER BY case_id, position`)
-    .bind(inputPlanId).all();
+  let dbItems = [];
+  if (checklistSupported) {
+    try {
+      const res = await db
+        .prepare(`SELECT case_id, position, label FROM case_checklist_items
+                  WHERE plan_id = ? ORDER BY case_id, position`)
+        .bind(inputPlanId).all();
+      dbItems = res.results;
+    } catch { /* noop */ }
+  }
   const itemsByCase = new Map();
   for (const it of dbItems) {
     if (!itemsByCase.has(it.case_id)) itemsByCase.set(it.case_id, []);
@@ -162,7 +175,7 @@ export async function onRequest(context) {
          VALUES (?, ?, ?, ?, 'added', NULL, NULL, ?, ?)`,
       ).bind(uuid(), inputPlanId, c.id, versionId, JSON.stringify(c), ts),
     );
-    if (Array.isArray(c.checklist) && c.checklist.length > 0) {
+    if (checklistSupported && Array.isArray(c.checklist) && c.checklist.length > 0) {
       for (const s of checklistReplaceStatements(db, inputPlanId, c.id, c.checklist, ts)) {
         statements.push(s);
       }
@@ -192,7 +205,7 @@ export async function onRequest(context) {
       db.prepare(`UPDATE cases SET ${sets.join(', ')} WHERE plan_id = ? AND id = ?`).bind(...values),
     );
 
-    if (ch.checklistChanged) {
+    if (checklistSupported && ch.checklistChanged) {
       for (const s of checklistReplaceStatements(db, inputPlanId, ch.id, ch.incoming.checklist, ts)) {
         statements.push(s);
       }
