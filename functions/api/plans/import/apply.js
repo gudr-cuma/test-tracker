@@ -107,7 +107,7 @@ async function _handle(context) {
       db.prepare(
         `INSERT INTO plan_versions (id, plan_id, md_content, imported_at, summary)
          VALUES (?, ?, ?, ?, ?)`,
-      ).bind(versionId, planId, importSource === 'markdown' ? md : null, ts, `${parsed.cases.length} added`),
+      ).bind(versionId, planId, importSource === 'markdown' ? md : '', ts, `${parsed.cases.length} added`),
     );
     for (const c of parsed.cases) {
       statements.push(caseInsertStatement(db, planId, c, importSource, ts));
@@ -170,7 +170,7 @@ async function _handle(context) {
     ).bind(
       versionId,
       inputPlanId,
-      importSource === 'markdown' ? md : null,
+      importSource === 'markdown' ? md : '',
       ts,
       `${acceptedAddedIds.size} added, ${acceptedChangedIds.size} changed, ${acceptedRemovedIds.size} removed`,
     ),
