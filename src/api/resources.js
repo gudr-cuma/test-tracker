@@ -10,6 +10,8 @@ export const plansApi = {
   archive: (id) => api.delete(`/api/plans/${encodeURIComponent(id)}`),
   patchFamily: (planId, family, label) =>
     api.patch(`/api/plans/${encodeURIComponent(planId)}/families`, { family, label }),
+  reorderFamilies: (planId, orderedFamilies) =>
+    api.patch(`/api/plans/${encodeURIComponent(planId)}/families`, { reorder: orderedFamilies }),
 };
 
 // ─── Import (markdown ou excel) ────────────────────────────────────

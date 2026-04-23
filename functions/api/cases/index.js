@@ -16,6 +16,7 @@ async function listCases(context) {
           c.expected, c.priority, c.source, c.removed_from_md,
           c.created_at, c.updated_at,
           COALESCE(pf.label, '') AS family_label,
+          pf.position AS family_position,
           (SELECT COUNT(*) FROM runs r WHERE r.plan_id = c.plan_id AND r.case_id = c.id) AS run_count,
           (SELECT r.status FROM runs r
             WHERE r.plan_id = c.plan_id AND r.case_id = c.id
@@ -44,6 +45,7 @@ async function listCases(context) {
           c.expected, c.priority, c.source, c.removed_from_md,
           c.created_at, c.updated_at,
           '' AS family_label,
+          NULL AS family_position,
           (SELECT COUNT(*) FROM runs r WHERE r.plan_id = c.plan_id AND r.case_id = c.id) AS run_count,
           (SELECT r.status FROM runs r
             WHERE r.plan_id = c.plan_id AND r.case_id = c.id

@@ -25,7 +25,16 @@ function getGroupKey(c, groupBy) {
   return '';
 }
 
-function sortGroups(keys, groupBy) {
+function sortGroups(keys, groupBy, positionByKey) {
+  if (groupBy === 'family' && positionByKey.size > 0) {
+    // Tri par position enregistrée (nulls en dernier), puis alpha
+    return [...keys].sort((a, b) => {
+      const pa = positionByKey.get(a) ?? Infinity;
+      const pb = positionByKey.get(b) ?? Infinity;
+      if (pa !== pb) return pa - pb;
+      return a.localeCompare(b);
+    });
+  }
   if (groupBy === 'status') {
     return [...keys].sort((a, b) => {
       const oa = STATUS_ORDER[a] ?? 99;
@@ -46,6 +55,7 @@ function sortGroups(keys, groupBy) {
 export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'family', onRefresh }) {
   const [sortKey, setSortKey] = useState('id');
   const [sortDir, setSortDir] = useState('asc');
+  const [collapsed, setCollapsed] = useState(new Set()); // groupKeys effondrés
   const user = useAuthStore((s) => s.user);
   const showToast = useStore((s) => s.showToast);
 
@@ -64,6 +74,19 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
     });
   }, [cases, sortKey, sortDir]);
 
+  // Extraire les positions par family depuis les cas (premier cas du groupe)
+  const positionByKey = useMemo(() => {
+    const map = new Map();
+    if (groupBy !== 'family') return map;
+    for (const c of sorted) {
+      const key = c.family || '—';
+      if (!map.has(key) && c.family_position != null) {
+        map.set(key, c.family_position);
+      }
+    }
+    return map;
+  }, [sorted, groupBy]);
+
   const groups = useMemo(() => {
     const map = new Map();
     for (const c of sorted) {
@@ -71,9 +94,9 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(c);
     }
-    const orderedKeys = sortGroups([...map.keys()], groupBy);
+    const orderedKeys = sortGroups([...map.keys()], groupBy, positionByKey);
     return orderedKeys.map((key) => ({ key, cases: map.get(key) }));
-  }, [sorted, groupBy]);
+  }, [sorted, groupBy, positionByKey]);
 
   function handleSort(key) {
     if (sortKey === key) {
@@ -84,6 +107,15 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
     }
   }
 
+  function toggleCollapse(key) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   async function handleSaveLabel(family, label) {
     if (!planId) return;
     try {
@@ -91,6 +123,22 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
       if (onRefresh) onRefresh();
     } catch (e) {
       showToast('error', `Impossible de sauvegarder le libellé : ${e.message || e}`);
+    }
+  }
+
+  async function handleMoveFamily(idx, delta) {
+    const newGroups = [...groups];
+    const targetIdx = idx + delta;
+    if (targetIdx < 0 || targetIdx >= newGroups.length) return;
+    // Swap
+    [newGroups[idx], newGroups[targetIdx]] = [newGroups[targetIdx], newGroups[idx]];
+    const newOrder = newGroups.map((g) => g.key);
+    // Optimistic: reorder local positionByKey is handled via onRefresh
+    try {
+      await plansApi.reorderFamilies(planId, newOrder);
+      if (onRefresh) onRefresh();
+    } catch (e) {
+      showToast('error', `Réordonnancement impossible : ${e.message || e}`);
     }
   }
 
@@ -120,7 +168,7 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
           </tr>
         </thead>
         <tbody className="divide-y divide-fv-border">
-          {groups.map(({ key, cases: groupCases }) => (
+          {groups.map(({ key, cases: groupCases }, idx) => (
             <GroupRows
               key={key}
               groupKey={key}
@@ -133,6 +181,11 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
               hidePriority={hidePriority}
               canEditFamily={canEditFamily}
               onSaveLabel={handleSaveLabel}
+              isCollapsed={collapsed.has(key)}
+              onToggleCollapse={() => toggleCollapse(key)}
+              groupIndex={idx}
+              groupCount={groups.length}
+              onMove={(delta) => handleMoveFamily(idx, delta)}
             />
           ))}
         </tbody>
@@ -145,6 +198,8 @@ function GroupRows({
   groupKey, groupBy, cases, selectedId, onSelect,
   hideFamily, hideStatus, hidePriority,
   canEditFamily, onSaveLabel,
+  isCollapsed, onToggleCollapse,
+  groupIndex, groupCount, onMove,
 }) {
   const colSpan = 7 - (hideFamily ? 1 : 0) - (hideStatus ? 1 : 0) - (hidePriority ? 1 : 0);
   const [editing, setEditing] = useState(false);
@@ -168,11 +223,27 @@ function GroupRows({
 
   return (
     <>
-      <tr className={isFamilyGroup ? 'bg-orange-50' : 'bg-fv-bg-secondary/70'}>
+      <tr
+        className={isFamilyGroup ? 'bg-orange-50' : 'bg-fv-bg-secondary/70'}
+      >
         <td colSpan={colSpan} className="px-3 py-1.5">
           <div className="flex items-center gap-2">
+            {/* Bouton collapse */}
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="shrink-0 text-fv-text-secondary/60 transition hover:text-fv-text-secondary"
+              title={isCollapsed ? 'Déplier' : 'Replier'}
+              aria-label={isCollapsed ? 'Déplier le groupe' : 'Replier le groupe'}
+            >
+              <span className={`inline-block transition-transform text-[10px] ${isCollapsed ? '-rotate-90' : ''}`}>
+                ▼
+              </span>
+            </button>
+
             <GroupLabel groupBy={groupBy} value={groupKey} />
 
+            {/* Libellé de famille éditable */}
             {isFamilyGroup && editing ? (
               <input
                 autoFocus
@@ -203,10 +274,37 @@ function GroupRows({
             ) : null}
 
             <span className="text-xs text-fv-text-secondary/60">{cases.length}</span>
+
+            {/* Boutons ↑↓ réordonnancement (famille uniquement, can_import) */}
+            {isFamilyGroup && canEditFamily && (
+              <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onMove(-1); }}
+                  disabled={groupIndex === 0}
+                  title="Monter la famille"
+                  aria-label="Monter la famille"
+                  className="rounded p-1 text-fv-text-secondary/60 hover:bg-orange-100 hover:text-fv-orange disabled:opacity-25"
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onMove(+1); }}
+                  disabled={groupIndex === groupCount - 1}
+                  title="Descendre la famille"
+                  aria-label="Descendre la famille"
+                  className="rounded p-1 text-fv-text-secondary/60 hover:bg-orange-100 hover:text-fv-orange disabled:opacity-25"
+                >
+                  ▼
+                </button>
+              </div>
+            )}
           </div>
         </td>
       </tr>
-      {cases.map((c) => {
+
+      {!isCollapsed && cases.map((c) => {
         const active = c.id === selectedId;
         return (
           <tr
