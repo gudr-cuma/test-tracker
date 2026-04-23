@@ -12,6 +12,19 @@ function normalize(value) {
   return String(value).trim();
 }
 
+function normalizeChecklist(list) {
+  if (!Array.isArray(list)) return [];
+  return list.map((it) => normalize(it.label)).filter(Boolean);
+}
+
+function checklistsDiffer(a, b) {
+  const na = normalizeChecklist(a);
+  const nb = normalizeChecklist(b);
+  if (na.length !== nb.length) return true;
+  for (let i = 0; i < na.length; i++) if (na[i] !== nb[i]) return true;
+  return false;
+}
+
 /**
  * Compare cases stored in DB for a given plan with cases extracted from a
  * freshly-parsed markdown. Returns `{ added, changed, removed }`.
@@ -52,6 +65,15 @@ export function diffCases(dbCases, mdCases) {
       }
     }
 
+    const checklistChanged = checklistsDiffer(db.checklist, md.checklist);
+    if (checklistChanged) {
+      fieldChanges.push({
+        field: 'checklist',
+        old: normalizeChecklist(db.checklist),
+        new: normalizeChecklist(md.checklist),
+      });
+    }
+
     const restored = Number(db.removed_from_md) === 1;
 
     if (fieldChanges.length > 0 || restored) {
@@ -61,6 +83,7 @@ export function diffCases(dbCases, mdCases) {
         incoming: md,
         fields: fieldChanges,
         restored,
+        checklistChanged,
       });
     }
   }

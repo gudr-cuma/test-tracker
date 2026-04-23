@@ -12,9 +12,12 @@ async function listRuns(context) {
 
   const { results } = await context.env.DB
     .prepare(
-      `SELECT r.*, t.name AS tester_name
+      `SELECT r.*, t.name AS tester_name,
+              ci.position AS checklist_item_position,
+              ci.label    AS checklist_item_label
        FROM runs r
        LEFT JOIN testers t ON t.id = r.tester_id
+       LEFT JOIN case_checklist_items ci ON ci.id = r.checklist_item_id
        WHERE r.plan_id = ? AND r.case_id = ?
        ORDER BY COALESCE(r.updated_at, r.created_at) DESC`,
     )
@@ -27,7 +30,7 @@ async function createRun(context) {
   const body = await readJson(context.request);
   if (!body) return error(400, 'invalid JSON body');
 
-  const { plan_id, case_id, status = 'a-faire', tester_id } = body;
+  const { plan_id, case_id, status = 'a-faire', tester_id, checklist_item_id } = body;
   if (!plan_id || !case_id) return error(400, 'plan_id and case_id are required');
   if (!VALID_STATUSES.has(status)) return error(400, `invalid status "${status}"`);
 
@@ -35,6 +38,13 @@ async function createRun(context) {
     .prepare('SELECT id FROM cases WHERE plan_id = ? AND id = ?')
     .bind(plan_id, case_id).first();
   if (!theCase) return error(404, 'case not found');
+
+  if (checklist_item_id) {
+    const item = await context.env.DB
+      .prepare('SELECT id FROM case_checklist_items WHERE id = ? AND plan_id = ? AND case_id = ?')
+      .bind(checklist_item_id, plan_id, case_id).first();
+    if (!item) return error(400, 'checklist_item_id does not belong to this case');
+  }
 
   const effectiveTester = tester_id || (context.data.tester ? context.data.tester.id : null);
 
@@ -46,10 +56,10 @@ async function createRun(context) {
   await context.env.DB
     .prepare(
       `INSERT INTO runs
-        (id, plan_id, case_id, tester_id, status, started_at, completed_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, plan_id, case_id, tester_id, status, started_at, completed_at, created_at, updated_at, checklist_item_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, plan_id, case_id, effectiveTester, status, startedAt, completedAt, ts, ts)
+    .bind(id, plan_id, case_id, effectiveTester, status, startedAt, completedAt, ts, ts, checklist_item_id || null)
     .run();
 
   const run = await context.env.DB

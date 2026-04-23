@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { casesApi } from '../../api/resources.js';
+import { casesApi, checklistApi } from '../../api/resources.js';
 import { useStore } from '../../store/useStore.js';
 import CommentsPanel from '../comments/CommentsPanel.jsx';
 import RunsTimeline from '../runs/RunsTimeline.jsx';
@@ -7,6 +7,7 @@ import Button from '../shared/Button.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Spinner from '../shared/Spinner.jsx';
 import StatusTrail from '../shared/StatusTrail.jsx';
+import ChecklistEditor from './ChecklistEditor.jsx';
 
 const FIELDS = [
   ['title', 'Titre'],
@@ -27,13 +28,24 @@ export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated, 
   const [error, setError] = useState(null);
   const [draft, setDraft] = useState(() => buildDraft(caseItem));
   const [runsForTrail, setRunsForTrail] = useState([]);
+  const [checklist, setChecklist] = useState(caseItem?.checklist || []);
 
   useEffect(() => {
     setDraft(buildDraft(caseItem));
     setEditMode(false);
     setError(null);
     setRunsForTrail([]);
-  }, [caseItem?.id]);
+    setChecklist(caseItem?.checklist || []);
+  }, [caseItem?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let active = true;
+    if (!caseItem?.id) return;
+    checklistApi.list(planId, caseItem.id).then((res) => {
+      if (active) setChecklist(res.items || []);
+    }).catch(() => { /* silent — offline fallback on cached list */ });
+    return () => { active = false; };
+  }, [planId, caseItem?.id]);
 
   async function handleSave() {
     setSaving(true);
@@ -142,6 +154,13 @@ export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated, 
           ))}
         </dl>
 
+        <ChecklistEditor
+          planId={planId}
+          caseId={caseItem.id}
+          items={checklist}
+          onChange={setChecklist}
+        />
+
         <CommentsPanel
           targetType="case"
           targetId={caseItem.id}
@@ -151,6 +170,7 @@ export default function CaseDetailPanel({ planId, caseItem, onClose, onUpdated, 
         <RunsTimeline
           planId={planId}
           caseId={caseItem.id}
+          checklist={checklist}
           onChanged={onRunsChanged}
           onRunsChange={setRunsForTrail}
         />

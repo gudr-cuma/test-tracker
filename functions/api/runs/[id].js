@@ -36,6 +36,17 @@ async function patchRun(context) {
     values.push(body.tester_id);
   }
 
+  if ('checklist_item_id' in body) {
+    if (body.checklist_item_id) {
+      const item = await context.env.DB
+        .prepare('SELECT id FROM case_checklist_items WHERE id = ? AND plan_id = ? AND case_id = ?')
+        .bind(body.checklist_item_id, current.plan_id, current.case_id).first();
+      if (!item) return error(400, 'checklist_item_id does not belong to this run\'s case');
+    }
+    sets.push('checklist_item_id = ?');
+    values.push(body.checklist_item_id || null);
+  }
+
   // Manual overrides
   if ('started_at' in body) {
     sets.push('started_at = ?');

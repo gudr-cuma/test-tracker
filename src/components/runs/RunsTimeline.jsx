@@ -7,13 +7,14 @@ import Button from '../shared/Button.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Spinner from '../shared/Spinner.jsx';
 import StatusSelect from './StatusSelect.jsx';
+import ChecklistTrail from '../cases/ChecklistTrail.jsx';
 
 /**
  * Runs panel for the currently-selected case. Drives its own data
  * lifecycle. When a run is created / updated / deleted, it invokes
  * `onChanged` so the parent can refresh the cases list aggregates.
  */
-export default function RunsTimeline({ planId, caseId, onChanged, onRunsChange }) {
+export default function RunsTimeline({ planId, caseId, checklist = [], onChanged, onRunsChange }) {
   const showToast = useStore((s) => s.showToast);
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,10 +70,22 @@ export default function RunsTimeline({ planId, caseId, onChanged, onRunsChange }
     markBusy(run.id, true);
     try {
       const res = await runsApi.update(run.id, { status: nextStatus });
-      setRuns((prev) => prev.map((r) => (r.id === run.id ? res.run : r)));
+      setRuns((prev) => prev.map((r) => (r.id === run.id ? { ...r, ...res.run } : r)));
       onChanged?.();
     } catch (e) {
       showToast('error', `Changement de statut impossible : ${e.message || e}`);
+    } finally {
+      markBusy(run.id, false);
+    }
+  }
+
+  async function handleChecklistItemChange(run, nextItemId) {
+    markBusy(run.id, true);
+    try {
+      const res = await runsApi.update(run.id, { checklist_item_id: nextItemId || null });
+      setRuns((prev) => prev.map((r) => (r.id === run.id ? { ...r, ...res.run } : r)));
+    } catch (e) {
+      showToast('error', `Mise à jour impossible : ${e.message || e}`);
     } finally {
       markBusy(run.id, false);
     }
@@ -124,8 +137,10 @@ export default function RunsTimeline({ planId, caseId, onChanged, onRunsChange }
             <RunRow
               key={run.id}
               run={run}
+              checklist={checklist}
               busy={busyIds.has(run.id)}
               onStatusChange={(s) => handleStatusChange(run, s)}
+              onChecklistItemChange={(itemId) => handleChecklistItemChange(run, itemId)}
               onDelete={() => handleDelete(run)}
             />
           ))}
@@ -135,20 +150,37 @@ export default function RunsTimeline({ planId, caseId, onChanged, onRunsChange }
   );
 }
 
-function RunRow({ run, busy, onStatusChange, onDelete }) {
+function RunRow({ run, checklist = [], busy, onStatusChange, onChecklistItemChange, onDelete }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(null);
+  const hasChecklist = checklist.length > 0;
 
   return (
     <li className="rounded-md border border-fv-border bg-white p-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusSelect
             value={run.status}
             onChange={onStatusChange}
             disabled={busy}
             size="sm"
           />
+          {hasChecklist ? (
+            <select
+              value={run.checklist_item_id || ''}
+              onChange={(e) => onChecklistItemChange(e.target.value || null)}
+              disabled={busy}
+              className="rounded-md border border-fv-border bg-white px-2 py-1 text-xs text-fv-text focus:border-fv-orange focus:outline-none"
+              title="Point de la checklist concerné"
+            >
+              <option value="">— point de checklist —</option>
+              {checklist.map((item, idx) => (
+                <option key={item.id} value={item.id}>
+                  {idx + 1}. {item.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
           {busy ? <Spinner size={12} /> : null}
         </div>
         <button
@@ -162,6 +194,16 @@ function RunRow({ run, busy, onStatusChange, onDelete }) {
           <span aria-hidden="true">🗑</span>
         </button>
       </div>
+      {hasChecklist ? (
+        <div className="mt-2">
+          <ChecklistTrail
+            items={checklist}
+            currentItemId={run.checklist_item_id}
+            runStatus={run.status}
+          />
+        </div>
+      ) : null}
+
       <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-fv-text-secondary">
         <MetaRow label="Créé" value={formatDateTime(run.created_at)} />
         <MetaRow label="Testeur" value={run.tester_name || '—'} />

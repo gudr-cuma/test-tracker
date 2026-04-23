@@ -10,13 +10,30 @@ const COLUMNS = [
   { key: 'priority',      header: 'Priorité' },
 ];
 
+function checkHeader(n) {
+  return `CHECK_${String(n + 1).padStart(3, '0')}`;
+}
+
 export function exportCasesToXlsx(planTitle, cases) {
-  const headers = COLUMNS.map((c) => c.header);
-  const rows = cases.map((c) => COLUMNS.map((col) => c[col.key] ?? ''));
+  const maxItems = cases.reduce(
+    (max, c) => Math.max(max, Array.isArray(c.checklist) ? c.checklist.length : 0),
+    0,
+  );
+
+  const headers = [
+    ...COLUMNS.map((c) => c.header),
+    ...Array.from({ length: maxItems }, (_, i) => checkHeader(i)),
+  ];
+
+  const rows = cases.map((c) => {
+    const base = COLUMNS.map((col) => c[col.key] ?? '');
+    const items = Array.isArray(c.checklist) ? c.checklist : [];
+    const checks = Array.from({ length: maxItems }, (_, i) => items[i]?.label ?? '');
+    return [...base, ...checks];
+  });
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
-  // Column widths
   ws['!cols'] = [
     { wch: 16 },  // ID
     { wch: 14 },  // Famille
@@ -25,6 +42,7 @@ export function exportCasesToXlsx(planTitle, cases) {
     { wch: 40 },  // Étapes
     { wch: 30 },  // Résultat attendu
     { wch: 10 },  // Priorité
+    ...Array.from({ length: maxItems }, () => ({ wch: 28 })),
   ];
 
   const wb = XLSX.utils.book_new();

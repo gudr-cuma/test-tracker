@@ -18,6 +18,28 @@ function caseInsertStatement(db, planId, c, source, ts) {
     );
 }
 
+function checklistReplaceStatements(db, planId, caseId, items, ts) {
+  const out = [
+    db.prepare('DELETE FROM case_checklist_items WHERE plan_id = ? AND case_id = ?')
+      .bind(planId, caseId),
+  ];
+  if (!Array.isArray(items)) return out;
+  let position = 0;
+  for (const it of items) {
+    const label = typeof it === 'string' ? it : it?.label;
+    if (!label || !String(label).trim()) continue;
+    out.push(
+      db.prepare(
+        `INSERT INTO case_checklist_items
+           (id, plan_id, case_id, position, label, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(crypto.randomUUID(), planId, caseId, position, String(label).trim(), ts, ts),
+    );
+    position++;
+  }
+  return out;
+}
+
 export async function onRequest(context) {
   if (context.request.method !== 'POST') return methodNotAllowed(['POST']);
 
@@ -77,6 +99,11 @@ export async function onRequest(context) {
            VALUES (?, ?, ?, ?, 'added', NULL, NULL, ?, ?)`,
         ).bind(uuid(), planId, c.id, versionId, JSON.stringify(c), ts),
       );
+      if (Array.isArray(c.checklist) && c.checklist.length > 0) {
+        for (const s of checklistReplaceStatements(db, planId, c.id, c.checklist, ts)) {
+          statements.push(s);
+        }
+      }
     }
     await db.batch(statements);
     return json({ planId, versionId, applied: { added: parsed.cases.length, changed: 0, removed: 0 } }, { status: 201 });
@@ -91,6 +118,17 @@ export async function onRequest(context) {
   const { results: dbCases } = await db
     .prepare('SELECT * FROM cases WHERE plan_id = ?')
     .bind(inputPlanId).all();
+
+  const { results: dbItems } = await db
+    .prepare(`SELECT case_id, position, label FROM case_checklist_items
+              WHERE plan_id = ? ORDER BY case_id, position`)
+    .bind(inputPlanId).all();
+  const itemsByCase = new Map();
+  for (const it of dbItems) {
+    if (!itemsByCase.has(it.case_id)) itemsByCase.set(it.case_id, []);
+    itemsByCase.get(it.case_id).push({ position: it.position, label: it.label });
+  }
+  for (const c of dbCases) c.checklist = itemsByCase.get(c.id) || [];
 
   const diff = diffCases(dbCases, parsed.cases);
 
@@ -124,6 +162,11 @@ export async function onRequest(context) {
          VALUES (?, ?, ?, ?, 'added', NULL, NULL, ?, ?)`,
       ).bind(uuid(), inputPlanId, c.id, versionId, JSON.stringify(c), ts),
     );
+    if (Array.isArray(c.checklist) && c.checklist.length > 0) {
+      for (const s of checklistReplaceStatements(db, inputPlanId, c.id, c.checklist, ts)) {
+        statements.push(s);
+      }
+    }
     addedApplied++;
   }
 
@@ -149,13 +192,21 @@ export async function onRequest(context) {
       db.prepare(`UPDATE cases SET ${sets.join(', ')} WHERE plan_id = ? AND id = ?`).bind(...values),
     );
 
+    if (ch.checklistChanged) {
+      for (const s of checklistReplaceStatements(db, inputPlanId, ch.id, ch.incoming.checklist, ts)) {
+        statements.push(s);
+      }
+    }
+
     for (const fc of ch.fields) {
+      const oldVal = Array.isArray(fc.old) ? JSON.stringify(fc.old) : fc.old;
+      const newVal = Array.isArray(fc.new) ? JSON.stringify(fc.new) : fc.new;
       statements.push(
         db.prepare(
           `INSERT INTO case_changes
              (id, plan_id, case_id, plan_version_id, change_type, field, old_value, new_value, changed_at)
            VALUES (?, ?, ?, ?, 'changed', ?, ?, ?, ?)`,
-        ).bind(uuid(), inputPlanId, ch.id, versionId, fc.field, fc.old, fc.new, ts),
+        ).bind(uuid(), inputPlanId, ch.id, versionId, fc.field, oldVal, newVal, ts),
       );
     }
     if (ch.restored) {

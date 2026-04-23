@@ -18,7 +18,13 @@ async function listCases(context) {
           WHERE r.plan_id = c.plan_id AND r.case_id = c.id
           ORDER BY COALESCE(r.updated_at, r.created_at) DESC LIMIT 1) AS latest_status,
         (SELECT COUNT(*) FROM runs r
-          WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'bug') AS bug_count
+          WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'bug') AS bug_count,
+        (SELECT COUNT(*) FROM case_checklist_items ci
+          WHERE ci.plan_id = c.plan_id AND ci.case_id = c.id) AS checklist_count,
+        (SELECT json_group_array(json_object('id', ci.id, 'position', ci.position, 'label', ci.label))
+          FROM (SELECT id, position, label FROM case_checklist_items
+                WHERE plan_id = c.plan_id AND case_id = c.id
+                ORDER BY position) ci) AS checklist_json
       FROM cases c
       WHERE c.plan_id = ?
       ORDER BY c.family, c.id`,
@@ -26,7 +32,14 @@ async function listCases(context) {
     .bind(planId)
     .all();
 
-  return json({ cases: results });
+  const cases = results.map((row) => {
+    const { checklist_json, ...rest } = row;
+    let checklist = [];
+    try { checklist = checklist_json ? JSON.parse(checklist_json) : []; } catch { /* noop */ }
+    return { ...rest, checklist };
+  });
+
+  return json({ cases });
 }
 
 async function createCase(context) {

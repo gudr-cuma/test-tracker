@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 
 const ID_RE = /^TC-[A-Z]+-\d+$/;
 const FAMILY_RE = /^TC-([A-Z]+)-/;
+const CHECK_RE = /^CHECK_(\d+)$/i;
 
 export function parseXlsx(buffer, filenameWithoutExt) {
   const wb = XLSX.read(buffer, { type: 'array' });
@@ -13,12 +14,21 @@ export function parseXlsx(buffer, filenameWithoutExt) {
 
   if (rows.length < 2) throw new Error('Aucune ligne de données trouvée dans le fichier.');
 
+  // Detect CHECK_NNN columns from the header row, ordered by numeric suffix.
+  const headerRow = rows[0].map((h) => String(h ?? '').trim());
+  const checkColumns = [];
+  for (let col = 7; col < headerRow.length; col++) {
+    const m = CHECK_RE.exec(headerRow[col]);
+    if (m) checkColumns.push({ col, n: Number(m[1]) });
+  }
+  checkColumns.sort((a, b) => a.n - b.n);
+
   const cases = [];
   const seen = new Set();
 
   for (let i = 1; i < rows.length; i++) {
-    const [rawId, rawFamily, rawTitle, rawPre, rawSteps, rawExpected, rawPriority] =
-      rows[i].map((cell) => String(cell ?? '').trim());
+    const row = rows[i].map((cell) => String(cell ?? '').trim());
+    const [rawId, rawFamily, rawTitle, rawPre, rawSteps, rawExpected, rawPriority] = row;
 
     if (!rawId) continue;
 
@@ -32,6 +42,12 @@ export function parseXlsx(buffer, filenameWithoutExt) {
 
     const familyFromId = FAMILY_RE.exec(rawId)?.[1] ?? '';
 
+    const checklist = [];
+    for (const { col } of checkColumns) {
+      const label = row[col] ?? '';
+      if (label) checklist.push({ position: checklist.length, label });
+    }
+
     cases.push({
       id: rawId,
       family: rawFamily || familyFromId,
@@ -40,6 +56,7 @@ export function parseXlsx(buffer, filenameWithoutExt) {
       steps: rawSteps,
       expected: rawExpected,
       priority: rawPriority,
+      checklist,
     });
   }
 

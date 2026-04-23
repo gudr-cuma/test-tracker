@@ -46,6 +46,18 @@ export async function onRequest(context) {
     .prepare('SELECT * FROM cases WHERE plan_id = ?')
     .bind(planId).all();
 
+  const { results: dbItems } = await context.env.DB
+    .prepare(`SELECT case_id, position, label FROM case_checklist_items
+              WHERE plan_id = ? ORDER BY case_id, position`)
+    .bind(planId).all();
+
+  const itemsByCase = new Map();
+  for (const it of dbItems) {
+    if (!itemsByCase.has(it.case_id)) itemsByCase.set(it.case_id, []);
+    itemsByCase.get(it.case_id).push({ position: it.position, label: it.label });
+  }
+  for (const c of dbCases) c.checklist = itemsByCase.get(c.id) || [];
+
   const diff = diffCases(dbCases, parsed.cases);
 
   return json({

@@ -65,17 +65,31 @@ export const runsApi = {
     api.get(
       `/api/runs?plan=${encodeURIComponent(planId)}&case=${encodeURIComponent(caseId)}`,
     ),
-  create: (planId, caseId, { status = 'a-faire', tester_id } = {}) =>
+  create: (planId, caseId, { status = 'a-faire', tester_id, checklist_item_id } = {}) =>
     api.post('/api/runs', {
       plan_id: planId,
       case_id: caseId,
       status,
       tester_id,
+      checklist_item_id,
     }),
   update: (runId, patch) =>
     api.patch(`/api/runs/${encodeURIComponent(runId)}`, patch),
   delete: (runId) =>
     api.delete(`/api/runs/${encodeURIComponent(runId)}`),
+};
+
+// ─── Checklist ──────────────────────────────────────────────────────
+export const checklistApi = {
+  list: (planId, caseId) =>
+    api.get(`/api/checklist?plan=${encodeURIComponent(planId)}&case=${encodeURIComponent(caseId)}`),
+  create: (planId, caseId, { label, position }) =>
+    api.post(`/api/checklist?plan=${encodeURIComponent(planId)}&case=${encodeURIComponent(caseId)}`,
+             { label, position }),
+  update: (itemId, patch) =>
+    api.patch(`/api/checklist/${encodeURIComponent(itemId)}`, patch),
+  delete: (itemId) =>
+    api.delete(`/api/checklist/${encodeURIComponent(itemId)}`),
 };
 
 // ─── Comments ───────────────────────────────────────────────────────
