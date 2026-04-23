@@ -2,6 +2,9 @@ import { json, error, methodNotAllowed, readJson, uuid, now } from '../../_lib/h
 
 export async function onRequest(context) {
   if (context.request.method === 'POST') {
+    if (!context.data.user?.can_import) {
+      return error(403, 'Vous n\'avez pas le droit de créer un cahier de test');
+    }
     const body = await readJson(context.request);
     if (!body?.title?.trim()) return error(400, 'Le titre est requis');
 

@@ -33,16 +33,16 @@ export default function PlansList() {
             Créez un cahier vide ou importez un fichier existant.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setNewPlanOpen(true)}>
-            + Nouveau cahier
-          </Button>
-          {canImport ? (
+        {canImport ? (
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setNewPlanOpen(true)}>
+              + Nouveau cahier
+            </Button>
             <Button variant="primary" onClick={() => openDialog({ type: 'import' })}>
               Importer un cahier
             </Button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       {error ? (
@@ -60,16 +60,16 @@ export default function PlansList() {
           title="Aucun cahier pour l'instant"
           description="Créez un cahier vide pour commencer à saisir des cas manuellement, ou importez un fichier markdown / Excel."
           action={
-            <div className="flex gap-2">
-              <Button variant="primary" onClick={() => setNewPlanOpen(true)}>
-                + Nouveau cahier
-              </Button>
-              {canImport ? (
+            canImport ? (
+              <div className="flex gap-2">
+                <Button variant="primary" onClick={() => setNewPlanOpen(true)}>
+                  + Nouveau cahier
+                </Button>
                 <Button variant="secondary" onClick={() => openDialog({ type: 'import' })}>
                   Importer un cahier
                 </Button>
-              ) : null}
-            </div>
+              </div>
+            ) : null
           }
         />
       ) : (
