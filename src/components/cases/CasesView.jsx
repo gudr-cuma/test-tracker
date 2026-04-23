@@ -247,7 +247,7 @@ export default function CasesView({ planId }) {
       {error ? <ErrorBanner message={error} onRetry={reload} /> : null}
 
       <div className="flex min-h-0 flex-1 gap-0">
-        <div className="min-w-0 flex-1 pr-4">
+        <div className="min-w-0 flex-1 overflow-y-auto pr-4">
           <div className="mb-2 flex gap-0 border-b border-fv-border">
             {[
               { id: 'family',   label: 'Famille' },
