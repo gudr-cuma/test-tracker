@@ -59,11 +59,12 @@ export default function CaseFilters({
         value={bugFilter}
         onChange={(e) => onBugFilterChange(e.target.value)}
         className="rounded-md border border-fv-border bg-white px-2.5 py-1.5 text-sm text-fv-text focus:border-fv-orange focus:outline-none focus:ring-1 focus:ring-fv-orange"
-        aria-label="Filtre bugs"
+        aria-label="Filtre bugs / évolutions"
       >
-        <option value="">Avec ou sans bug</option>
-        <option value="with">Avec bug(s)</option>
-        <option value="without">Sans bug</option>
+        <option value="">Avec ou sans</option>
+        <option value="bug">Avec bug</option>
+        <option value="evolution">Avec évolution</option>
+        <option value="both">Avec les 2</option>
       </select>
 
       <select
@@ -72,10 +73,10 @@ export default function CaseFilters({
         className="rounded-md border border-fv-border bg-white px-2.5 py-1.5 text-sm text-fv-text focus:border-fv-orange focus:outline-none focus:ring-1 focus:ring-fv-orange"
         aria-label="Filtre d'origine"
       >
-        <option value="active">Actifs (MD + manuels)</option>
-        <option value="markdown">Issus du markdown</option>
+        <option value="active">Actifs (import + manuels)</option>
+        <option value="markdown">Issus de l&rsquo;import</option>
         <option value="manual">Manuels uniquement</option>
-        <option value="removed">Retirés du MD</option>
+        <option value="removed">Retirés de l&rsquo;import</option>
         <option value="all">Tout afficher</option>
       </select>
     </div>

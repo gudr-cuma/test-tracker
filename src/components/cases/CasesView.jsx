@@ -43,7 +43,7 @@ export default function CasesView({ planId }) {
   const [query, setQuery] = useState('');
   const [family, setFamily] = useState('');
   const [status, setStatus] = useState('');
-  const [bugFilter, setBugFilter] = useState(''); // '' | 'with' | 'without'
+  const [bugFilter, setBugFilter] = useState(''); // '' | 'bug' | 'evolution' | 'both'
   const [sourceFilter, setSourceFilter] = useState('active');
   const [selectedId, setSelectedId] = useState(null);
   const [newCaseOpen, setNewCaseOpen] = useState(false);
@@ -110,10 +110,12 @@ export default function CasesView({ planId }) {
         if (cur !== status) return false;
       }
 
-      // Bug filter : agrège bug_count (nb runs en statut bug).
+      // Filtre bug / évolution
       const bugs = c.bug_count || 0;
-      if (bugFilter === 'with' && bugs <= 0) return false;
-      if (bugFilter === 'without' && bugs > 0) return false;
+      const evols = c.evolution_count || 0;
+      if (bugFilter === 'bug'       && bugs <= 0) return false;
+      if (bugFilter === 'evolution' && evols <= 0) return false;
+      if (bugFilter === 'both'      && (bugs <= 0 || evols <= 0)) return false;
 
       if (q) {
         const hay = `${c.id} ${c.title || ''}`.toLowerCase();

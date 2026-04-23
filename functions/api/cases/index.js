@@ -23,6 +23,8 @@ async function listCases(context) {
             ORDER BY COALESCE(r.updated_at, r.created_at) DESC LIMIT 1) AS latest_status,
           (SELECT COUNT(*) FROM runs r
             WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'bug') AS bug_count,
+          (SELECT COUNT(*) FROM runs r
+            WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'evolution') AS evolution_count,
           (SELECT COUNT(*) FROM case_checklist_items ci
             WHERE ci.plan_id = c.plan_id AND ci.case_id = c.id) AS checklist_count,
           (SELECT json_group_array(json_object('id', ci.id, 'position', ci.position, 'label', ci.label))
@@ -52,6 +54,8 @@ async function listCases(context) {
             ORDER BY COALESCE(r.updated_at, r.created_at) DESC LIMIT 1) AS latest_status,
           (SELECT COUNT(*) FROM runs r
             WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'bug') AS bug_count,
+          (SELECT COUNT(*) FROM runs r
+            WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'evolution') AS evolution_count,
           (SELECT COUNT(*) FROM case_checklist_items ci
             WHERE ci.plan_id = c.plan_id AND ci.case_id = c.id) AS checklist_count,
           (SELECT json_group_array(json_object('id', ci.id, 'position', ci.position, 'label', ci.label))
