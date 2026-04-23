@@ -48,6 +48,7 @@ export default function CasesView({ planId }) {
   const [selectedId, setSelectedId] = useState(null);
   const [newCaseOpen, setNewCaseOpen] = useState(false);
 
+  const [groupBy, setGroupBy] = useState('family');
   const [panelWidth, setPanelWidth] = useState(loadPanelWidth);
   const resizingRef = useRef(false);
 
@@ -245,6 +246,28 @@ export default function CasesView({ planId }) {
 
       <div className="flex min-h-0 flex-1 gap-0">
         <div className="min-w-0 flex-1 pr-4">
+          <div className="mb-2 flex gap-0 border-b border-fv-border">
+            {[
+              { id: 'family',   label: 'Famille' },
+              { id: 'status',   label: 'Statut' },
+              { id: 'priority', label: 'Priorité' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setGroupBy(t.id)}
+                className={[
+                  'border-b-2 px-4 py-2 text-sm font-medium transition',
+                  groupBy === t.id
+                    ? '-mb-px border-fv-orange text-fv-text'
+                    : 'border-transparent text-fv-text-secondary hover:text-fv-text',
+                ].join(' ')}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {filtered.length === 0 ? (
             <div className="rounded-md border border-dashed border-fv-border bg-white p-8 text-center text-sm text-fv-text-secondary">
               Aucun cas ne correspond aux filtres.
@@ -254,6 +277,7 @@ export default function CasesView({ planId }) {
               cases={filtered}
               selectedId={selectedId}
               onSelect={selectCase}
+              groupBy={groupBy}
             />
           )}
         </div>
