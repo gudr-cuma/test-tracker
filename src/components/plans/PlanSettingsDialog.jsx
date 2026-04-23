@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { plansApi } from '../../api/resources.js';
 import { useStore } from '../../store/useStore.js';
+import { useAuthStore } from '../../store/useAuthStore.js';
 import { COLOR_PALETTE, ICON_SUGGESTIONS } from '../../lib/palette.js';
 import Button from '../shared/Button.jsx';
 import Modal from '../shared/Modal.jsx';
@@ -8,19 +9,29 @@ import ColorIconPicker from '../shared/ColorIconPicker.jsx';
 
 export default function PlanSettingsDialog({ plan, onClose }) {
   const projects = useStore((s) => s.projects);
-  const projectsLoadedOnce = useStore((s) => s.projectsLoadedOnce);
   const loadProjects = useStore((s) => s.loadProjects);
   const refreshPlans = useStore((s) => s.refreshPlans);
   const showToast = useStore((s) => s.showToast);
+  const isAdminPlans = useAuthStore((s) => s.user?.admin_plans);
 
   const [title, setTitle] = useState(plan.title ?? '');
   const [projectId, setProjectId] = useState(plan.project_id ?? '');
+  const [ownerId, setOwnerId] = useState(plan.owner_id ?? '');
   const [color, setColor] = useState(plan.color ?? COLOR_PALETTE[0].value);
   const [icon, setIcon] = useState(plan.icon ?? ICON_SUGGESTIONS[3]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
+  const [users, setUsers] = useState([]);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
+
+  useEffect(() => {
+    if (!isAdminPlans) return;
+    fetch('/api/admin/users', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setUsers(d.users || []))
+      .catch(() => {});
+  }, [isAdminPlans]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -28,12 +39,14 @@ export default function PlanSettingsDialog({ plan, onClose }) {
     setSaving(true);
     setErr(null);
     try {
-      await plansApi.update(plan.id, {
+      const patch = {
         title: title.trim(),
         project_id: projectId || null,
         color: color || null,
         icon: icon || null,
-      });
+      };
+      if (isAdminPlans) patch.owner_id = ownerId || null;
+      await plansApi.update(plan.id, patch);
       await refreshPlans();
       showToast('success', 'Plan mis à jour.');
       onClose();
@@ -84,6 +97,22 @@ export default function PlanSettingsDialog({ plan, onClose }) {
             ))}
           </select>
         </div>
+
+        {isAdminPlans && users.length > 0 ? (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-fv-text">Propriétaire</label>
+            <select
+              value={ownerId}
+              onChange={(e) => setOwnerId(e.target.value)}
+              className="w-full rounded-md border border-fv-border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-fv-orange"
+            >
+              <option value="">— Aucun —</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <ColorIconPicker
           color={color}

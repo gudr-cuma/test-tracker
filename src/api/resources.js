@@ -36,6 +36,8 @@ export const projectsApi = {
   create: (body) => api.post('/api/projects', body),
   update: (id, patch) => api.patch(`/api/projects/${encodeURIComponent(id)}`, patch),
   delete: (id) => api.delete(`/api/projects/${encodeURIComponent(id)}`),
+  getCases: (projectId) => api.get(`/api/projects/${encodeURIComponent(projectId)}/cases`),
+  getStats: (projectId) => api.get(`/api/projects/${encodeURIComponent(projectId)}/stats`),
 };
 
 // ─── Cases ──────────────────────────────────────────────────────────

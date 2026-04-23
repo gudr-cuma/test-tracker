@@ -2,6 +2,15 @@ import { json, error, methodNotAllowed, readJson, uuid, now } from '../../_lib/h
 
 const VALID_TARGETS = new Set(['case', 'run']);
 
+const SELECT_COMMENT = `
+  SELECT c.id, c.target_type, c.target_id, c.body, c.created_at,
+         c.author_id, c.user_author_id,
+         COALESCE(u.name, t.name, 'Anonyme') AS author_name
+  FROM comments c
+  LEFT JOIN users u ON u.id = c.user_author_id
+  LEFT JOIN testers t ON t.id = c.author_id
+`;
+
 async function listComments(context) {
   const url = new URL(context.request.url);
   const targetType = url.searchParams.get('targetType');
@@ -10,14 +19,7 @@ async function listComments(context) {
   if (!VALID_TARGETS.has(targetType)) return error(400, `invalid targetType "${targetType}"`);
 
   const { results } = await context.env.DB
-    .prepare(
-      `SELECT c.id, c.target_type, c.target_id, c.body, c.created_at,
-              c.author_id, t.name AS author_name
-       FROM comments c
-       LEFT JOIN testers t ON t.id = c.author_id
-       WHERE c.target_type = ? AND c.target_id = ?
-       ORDER BY c.created_at ASC`,
-    )
+    .prepare(`${SELECT_COMMENT} WHERE c.target_type = ? AND c.target_id = ? ORDER BY c.created_at ASC`)
     .bind(targetType, targetId).all();
 
   return json({ comments: results });
@@ -33,25 +35,19 @@ async function createComment(context) {
   }
   if (!VALID_TARGETS.has(target_type)) return error(400, `invalid target_type "${target_type}"`);
 
-  const authorId = context.data.tester ? context.data.tester.id : null;
+  const userAuthorId = context.data.user?.id || null;
   const id = uuid();
   const ts = now();
 
   await context.env.DB
     .prepare(
-      `INSERT INTO comments (id, target_type, target_id, author_id, body, created_at)
+      `INSERT INTO comments (id, target_type, target_id, user_author_id, body, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, target_type, target_id, authorId, text.trim(), ts).run();
+    .bind(id, target_type, target_id, userAuthorId, text.trim(), ts).run();
 
   const created = await context.env.DB
-    .prepare(
-      `SELECT c.id, c.target_type, c.target_id, c.body, c.created_at,
-              c.author_id, t.name AS author_name
-       FROM comments c
-       LEFT JOIN testers t ON t.id = c.author_id
-       WHERE c.id = ?`,
-    )
+    .prepare(`${SELECT_COMMENT} WHERE c.id = ?`)
     .bind(id).first();
 
   return json({ comment: created }, { status: 201 });

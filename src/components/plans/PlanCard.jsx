@@ -69,6 +69,12 @@ export default function PlanCard({ plan }) {
           </p>
         )}
 
+        {plan.owner_name ? (
+          <p className="mt-0.5 truncate text-xs text-fv-text-secondary">
+            👤 {plan.owner_name}
+          </p>
+        ) : null}
+
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-xs uppercase tracking-wide text-fv-text-secondary">Cas</dt>

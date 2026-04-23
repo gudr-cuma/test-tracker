@@ -8,6 +8,16 @@ import Spinner from '../shared/Spinner.jsx';
 import PlanCard from './PlanCard.jsx';
 import NewPlanDialog from './NewPlanDialog.jsx';
 
+function PlansGrid({ plans }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {plans.map((plan) => (
+        <PlanCard key={plan.id} plan={plan} />
+      ))}
+    </div>
+  );
+}
+
 export default function PlansList() {
   const plans = useStore((s) => s.plans);
   const loading = useStore((s) => s.plansLoading);
@@ -16,13 +26,18 @@ export default function PlansList() {
   const loadPlans = useStore((s) => s.loadPlans);
   const refreshPlans = useStore((s) => s.refreshPlans);
   const openDialog = useStore((s) => s.openDialog);
-  const canImport = useAuthStore((s) => s.user?.can_import);
+  const user = useAuthStore((s) => s.user);
+  const canImport = user?.can_import;
+  const isAdminPlans = user?.admin_plans;
 
   const [newPlanOpen, setNewPlanOpen] = useState(false);
 
   useEffect(() => {
     loadPlans();
   }, [loadPlans]);
+
+  const myPlans = isAdminPlans ? plans.filter((p) => p.owner_id === user?.id) : plans;
+  const otherPlans = isAdminPlans ? plans.filter((p) => p.owner_id !== user?.id) : [];
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -72,12 +87,30 @@ export default function PlansList() {
             ) : null
           }
         />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} />
-          ))}
+      ) : isAdminPlans ? (
+        <div className="space-y-8">
+          <section>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fv-text-secondary">
+              Mes cahiers ({myPlans.length})
+            </h2>
+            {myPlans.length === 0 ? (
+              <p className="text-sm text-fv-text-secondary italic">Vous n'avez aucun cahier assigné.</p>
+            ) : (
+              <PlansGrid plans={myPlans} />
+            )}
+          </section>
+
+          {otherPlans.length > 0 ? (
+            <section>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fv-text-secondary">
+                Autres cahiers ({otherPlans.length})
+              </h2>
+              <PlansGrid plans={otherPlans} />
+            </section>
+          ) : null}
         </div>
+      ) : (
+        <PlansGrid plans={plans} />
       )}
 
       {newPlanOpen ? (

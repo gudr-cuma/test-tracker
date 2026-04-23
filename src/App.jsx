@@ -7,6 +7,7 @@ import PlansList from './components/plans/PlansList.jsx';
 import PlanDetail from './components/plans/PlanDetail.jsx';
 import ToolsList from './components/tools/ToolsList.jsx';
 import ProjectsList from './components/projects/ProjectsList.jsx';
+import ProjectDetail from './components/projects/ProjectDetail.jsx';
 import ImportDialog from './components/import/ImportDialog.jsx';
 import LoginPage from './components/auth/LoginPage.jsx';
 import BootstrapPage from './components/auth/BootstrapPage.jsx';
@@ -15,6 +16,7 @@ import Spinner from './components/shared/Spinner.jsx';
 
 export default function App() {
   const currentPlanId = useStore((s) => s.currentPlanId);
+  const currentProjectId = useStore((s) => s.currentProjectId);
   const homeTab = useStore((s) => s.homeTab);
   const dialog = useStore((s) => s.dialog);
   const loadPlans = useStore((s) => s.loadPlans);
@@ -58,6 +60,8 @@ export default function App() {
     <AppShell>
       {currentPlanId ? (
         <PlanDetail />
+      ) : currentProjectId ? (
+        <ProjectDetail projectId={currentProjectId} />
       ) : (
         <>
           <HomeTabNav />

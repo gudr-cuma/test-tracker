@@ -6,6 +6,9 @@ import PlanSettingsDialog from '../plans/PlanSettingsDialog.jsx';
 
 export default function AppHeader() {
   const plan = useStore(selectCurrentPlan);
+  const currentProjectId = useStore((s) => s.currentProjectId);
+  const projects = useStore((s) => s.projects);
+  const project = currentProjectId ? projects.find((p) => p.id === currentProjectId) || null : null;
   const homeTab = useStore((s) => s.homeTab);
   const goHome = useStore((s) => s.goHome);
   const openDialog = useStore((s) => s.openDialog);
@@ -64,6 +67,20 @@ export default function AppHeader() {
               Ré-importer
             </Button>
           ) : null}
+        </>
+      ) : project ? (
+        <>
+          <span aria-hidden="true" className="text-fv-text-secondary">/</span>
+          <span className="text-lg">{project.icon}</span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium text-fv-text">{project.name}</div>
+            {project.tool_name ? (
+              <div className="flex items-center gap-1 truncate text-xs text-fv-text-secondary">
+                <span>{project.tool_icon}</span>
+                <span>{project.tool_name}</span>
+              </div>
+            ) : null}
+          </div>
         </>
       ) : (
         <>

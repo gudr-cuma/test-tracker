@@ -21,7 +21,10 @@ async function patchPlan(context) {
   const body = await readJson(context.request);
   if (!body) return error(400, 'corps JSON invalide');
 
+  const user = context.data.user;
   const allowed = ['title', 'project_id', 'color', 'icon'];
+  // owner_id ne peut être modifié que par un admin_plans
+  if (user?.admin_plans && 'owner_id' in body) allowed.push('owner_id');
   const fields = Object.keys(body).filter((k) => allowed.includes(k) && body[k] !== undefined);
   if (fields.length === 0) return error(400, 'aucun champ modifiable fourni');
 

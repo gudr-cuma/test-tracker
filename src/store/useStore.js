@@ -75,16 +75,21 @@ export const useStore = create((set, get) => ({
   // ── Navigation ─────────────────────────────────────────────────
   homeTab: 'plans',
   currentPlanId: null,
+  currentProjectId: null,
   currentTab: 'cases',
 
   setHomeTab: (tab) => set({ homeTab: tab }),
   setCurrentPlan: (id) => {
     history.replaceState({}, '', `?plan=${encodeURIComponent(id)}`);
-    set({ currentPlanId: id, currentTab: 'cases', dialog: null });
+    set({ currentPlanId: id, currentProjectId: null, currentTab: 'cases', dialog: null });
+  },
+  setCurrentProject: (id) => {
+    history.replaceState({}, '', `?project=${encodeURIComponent(id)}`);
+    set({ currentProjectId: id, currentPlanId: null, currentTab: 'cases', dialog: null });
   },
   goHome: () => {
     history.replaceState({}, '', window.location.pathname);
-    set({ currentPlanId: null, dialog: null });
+    set({ currentPlanId: null, currentProjectId: null, dialog: null });
   },
   setTab: (tab) => set({ currentTab: tab }),
 

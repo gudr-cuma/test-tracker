@@ -7,6 +7,7 @@ import ProjectFormDialog from './ProjectFormDialog.jsx';
 export default function ProjectCard({ project }) {
   const refreshProjects = useStore((s) => s.refreshProjects);
   const showToast = useStore((s) => s.showToast);
+  const setCurrentProject = useStore((s) => s.setCurrentProject);
 
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -26,13 +27,17 @@ export default function ProjectCard({ project }) {
 
   return (
     <>
-      <div className="flex flex-col gap-3 rounded-xl border border-fv-border bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="group flex flex-col gap-3 rounded-xl border border-fv-border bg-white p-4 shadow-sm transition-shadow hover:border-fv-orange hover:shadow-md">
         <div
           className="h-1.5 w-full rounded-full"
           style={{ backgroundColor: project.color }}
         />
 
-        <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={() => setCurrentProject(project.id)}
+          className="flex items-start gap-3 text-left focus:outline-none"
+        >
           <div
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-xl"
             style={{ backgroundColor: `${project.color}22` }}
@@ -40,7 +45,9 @@ export default function ProjectCard({ project }) {
             {project.icon}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-semibold text-fv-text">{project.name}</h3>
+            <h3 className="truncate font-semibold text-fv-text group-hover:text-fv-orange-dark">
+              {project.name}
+            </h3>
             {project.tool_name ? (
               <div className="mt-0.5 flex items-center gap-1.5">
                 <span className="text-sm">{project.tool_icon}</span>
@@ -53,7 +60,7 @@ export default function ProjectCard({ project }) {
               {project.plan_count ?? 0} plan{project.plan_count !== 1 ? 's' : ''}
             </p>
           </div>
-        </div>
+        </button>
 
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
