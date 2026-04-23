@@ -41,6 +41,18 @@ function checklistReplaceStatements(db, planId, caseId, items, ts) {
 }
 
 export async function onRequest(context) {
+  try {
+    return await _handle(context);
+  } catch (e) {
+    console.error('[apply] uncaught:', e);
+    return new Response(
+      JSON.stringify({ _debug_error: String(e?.message ?? e), _debug_stack: String(e?.stack ?? '') }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+}
+
+async function _handle(context) {
   if (context.request.method !== 'POST') return methodNotAllowed(['POST']);
 
   if (!context.data.user?.can_import) {
