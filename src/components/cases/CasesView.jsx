@@ -286,7 +286,7 @@ export default function CasesView({ planId }) {
         </div>
 
         {selectedCase ? (
-          <div className="flex shrink-0" style={{ width: panelWidth }}>
+          <div className="flex shrink-0" style={{ width: panelWidth, position: 'sticky', top: 0, maxHeight: '100vh', overflowY: 'auto' }}>
             <div
               role="separator"
               aria-orientation="vertical"
