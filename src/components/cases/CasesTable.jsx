@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 import { STATUS_LABELS } from '../../engine/formatUtils.js';
+import { plansApi } from '../../api/resources.js';
+import { useStore } from '../../store/useStore.js';
+import { useAuthStore } from '../../store/useAuthStore.js';
 import StatusBadge from '../shared/StatusBadge.jsx';
 
 const STATUS_ORDER = ['a-faire', 'en-cours', 'en-pause', 'bug', 'fait', 'clos']
@@ -40,9 +43,14 @@ function sortGroups(keys, groupBy) {
   return [...keys].sort((a, b) => a.localeCompare(b));
 }
 
-export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'family' }) {
+export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'family', onRefresh }) {
   const [sortKey, setSortKey] = useState('id');
   const [sortDir, setSortDir] = useState('asc');
+  const user = useAuthStore((s) => s.user);
+  const showToast = useStore((s) => s.showToast);
+
+  const planId = cases[0]?.plan_id ?? null;
+  const canEditFamily = Boolean(user?.can_import);
 
   const sorted = useMemo(() => {
     const fn = SORT_ACCESSORS[sortKey] || SORT_ACCESSORS.id;
@@ -73,6 +81,16 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
     } else {
       setSortKey(key);
       setSortDir('asc');
+    }
+  }
+
+  async function handleSaveLabel(family, label) {
+    if (!planId) return;
+    try {
+      await plansApi.patchFamily(planId, family, label);
+      if (onRefresh) onRefresh();
+    } catch (e) {
+      showToast('error', `Impossible de sauvegarder le libellé : ${e.message || e}`);
     }
   }
 
@@ -113,6 +131,8 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
               hideFamily={hideFamily}
               hideStatus={hideStatus}
               hidePriority={hidePriority}
+              canEditFamily={canEditFamily}
+              onSaveLabel={handleSaveLabel}
             />
           ))}
         </tbody>
@@ -121,14 +141,67 @@ export default function CasesTable({ cases, selectedId, onSelect, groupBy = 'fam
   );
 }
 
-function GroupRows({ groupKey, groupBy, cases, selectedId, onSelect, hideFamily, hideStatus, hidePriority }) {
+function GroupRows({
+  groupKey, groupBy, cases, selectedId, onSelect,
+  hideFamily, hideStatus, hidePriority,
+  canEditFamily, onSaveLabel,
+}) {
   const colSpan = 7 - (hideFamily ? 1 : 0) - (hideStatus ? 1 : 0) - (hidePriority ? 1 : 0);
+  const [editing, setEditing] = useState(false);
+  const currentLabel = cases[0]?.family_label ?? '';
+  const [draft, setDraft] = useState(currentLabel);
+
+  function startEdit(e) {
+    if (!canEditFamily || groupBy !== 'family') return;
+    e.stopPropagation();
+    setDraft(currentLabel);
+    setEditing(true);
+  }
+
+  async function commitEdit() {
+    setEditing(false);
+    if (draft.trim() === currentLabel) return;
+    await onSaveLabel(groupKey, draft.trim());
+  }
+
+  const isFamilyGroup = groupBy === 'family';
+
   return (
     <>
-      <tr className="bg-fv-bg-secondary/70">
+      <tr className={isFamilyGroup ? 'bg-orange-50' : 'bg-fv-bg-secondary/70'}>
         <td colSpan={colSpan} className="px-3 py-1.5">
           <div className="flex items-center gap-2">
             <GroupLabel groupBy={groupBy} value={groupKey} />
+
+            {isFamilyGroup && editing ? (
+              <input
+                autoFocus
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
+                  if (e.key === 'Escape') { setEditing(false); }
+                }}
+                placeholder="Libellé de la famille…"
+                className="min-w-0 flex-1 rounded border border-fv-orange bg-white px-2 py-0.5 text-xs text-fv-text focus:outline-none"
+                style={{ maxWidth: '28rem' }}
+              />
+            ) : isFamilyGroup ? (
+              <button
+                type="button"
+                onClick={startEdit}
+                title={canEditFamily ? 'Cliquer pour éditer le libellé' : undefined}
+                className={[
+                  'text-xs text-fv-text-secondary/80',
+                  canEditFamily ? 'cursor-text hover:text-fv-orange' : 'cursor-default',
+                ].join(' ')}
+              >
+                {currentLabel ? `— ${currentLabel}` : (canEditFamily ? '+ libellé' : '')}
+              </button>
+            ) : null}
+
             <span className="text-xs text-fv-text-secondary/60">{cases.length}</span>
           </div>
         </td>

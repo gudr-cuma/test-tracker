@@ -144,6 +144,7 @@ export default function ImportDialog({ planIdContext = null }) {
           title: parsedCases.title,
           filename: file.filename,
           planId: planIdContext ?? undefined,
+          familyLabels: parsedCases.familyLabels ?? {},
         };
       } else {
         payload = {

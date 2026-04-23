@@ -278,6 +278,7 @@ export default function CasesView({ planId }) {
               selectedId={selectedId}
               onSelect={selectCase}
               groupBy={groupBy}
+              onRefresh={reload}
             />
           )}
         </div>

@@ -15,6 +15,8 @@ function detectColumn(header) {
   const h = normalizeHeader(header);
   if (!h) return null;
   if (/^id\b/.test(h) || h === 'identifiant' || h.startsWith('identifiant')) return 'id';
+  // Libellé famille AVANT famille pour éviter que /^famille/ ne capte "libellé famille"
+  if (/libell/.test(h) && /famille/.test(h)) return 'family_label';
   if (/^famille/.test(h)) return 'family';
   if (/^titre/.test(h) || h === 'nom' || /^intitul/.test(h)) return 'title';
   if (/^pr[eé]condition/.test(h)) return 'preconditions';
@@ -66,6 +68,7 @@ export function parseXlsx(buffer, filenameWithoutExt) {
 
   const cases = [];
   const seen = new Set();
+  const familyLabels = new Map(); // family → label (premier libellé non-vide rencontré)
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -81,6 +84,10 @@ export function parseXlsx(buffer, filenameWithoutExt) {
     seen.add(rawId);
 
     const familyFromId = FAMILY_RE.exec(rawId)?.[1] ?? '';
+    const family = cellAt(row, 'family') || familyFromId;
+
+    const fl = cellAt(row, 'family_label');
+    if (fl && !familyLabels.has(family)) familyLabels.set(family, fl);
 
     const checklist = [];
     for (const { col } of checkColumns) {
@@ -90,7 +97,7 @@ export function parseXlsx(buffer, filenameWithoutExt) {
 
     cases.push({
       id: rawId,
-      family: cellAt(row, 'family') || familyFromId,
+      family,
       title: cellAt(row, 'title'),
       preconditions: cellAt(row, 'preconditions'),
       steps: cellAt(row, 'steps'),
@@ -102,5 +109,5 @@ export function parseXlsx(buffer, filenameWithoutExt) {
 
   if (cases.length === 0) throw new Error('Aucun cas de test valide trouvé dans le fichier.');
 
-  return { title: filenameWithoutExt, cases };
+  return { title: filenameWithoutExt, cases, familyLabels: Object.fromEntries(familyLabels) };
 }

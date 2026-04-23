@@ -8,14 +8,16 @@ export const plansApi = {
   create: (body) => api.post('/api/plans', body),
   update: (id, patch) => api.patch(`/api/plans/${encodeURIComponent(id)}`, patch),
   archive: (id) => api.delete(`/api/plans/${encodeURIComponent(id)}`),
+  patchFamily: (planId, family, label) =>
+    api.patch(`/api/plans/${encodeURIComponent(planId)}/families`, { family, label }),
 };
 
 // ─── Import (markdown ou excel) ────────────────────────────────────
 export const importApi = {
   dryRun: ({ md, filename, planId, cases, title }) =>
     api.post('/api/plans/import/dry-run', { md, filename, planId, cases, title }),
-  apply: ({ md, filename, planId, accepted, cases, title }) =>
-    api.post('/api/plans/import/apply', { md, filename, planId, accepted, cases, title }),
+  apply: ({ md, filename, planId, accepted, cases, title, familyLabels }) =>
+    api.post('/api/plans/import/apply', { md, filename, planId, accepted, cases, title, familyLabels }),
 };
 
 // ─── Tools ──────────────────────────────────────────────────────────

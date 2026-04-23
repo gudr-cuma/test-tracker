@@ -7,30 +7,62 @@ async function listCases(context) {
   const planId = url.searchParams.get('plan');
   if (!planId) return error(400, 'query param `plan` is required');
 
-  const { results } = await context.env.DB
-    .prepare(
-      `SELECT
-        c.id, c.plan_id, c.family, c.title, c.preconditions, c.steps,
-        c.expected, c.priority, c.source, c.removed_from_md,
-        c.created_at, c.updated_at,
-        (SELECT COUNT(*) FROM runs r WHERE r.plan_id = c.plan_id AND r.case_id = c.id) AS run_count,
-        (SELECT r.status FROM runs r
-          WHERE r.plan_id = c.plan_id AND r.case_id = c.id
-          ORDER BY COALESCE(r.updated_at, r.created_at) DESC LIMIT 1) AS latest_status,
-        (SELECT COUNT(*) FROM runs r
-          WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'bug') AS bug_count,
-        (SELECT COUNT(*) FROM case_checklist_items ci
-          WHERE ci.plan_id = c.plan_id AND ci.case_id = c.id) AS checklist_count,
-        (SELECT json_group_array(json_object('id', ci.id, 'position', ci.position, 'label', ci.label))
-          FROM (SELECT id, position, label FROM case_checklist_items
-                WHERE plan_id = c.plan_id AND case_id = c.id
-                ORDER BY position) ci) AS checklist_json
-      FROM cases c
-      WHERE c.plan_id = ?
-      ORDER BY c.family, c.id`,
-    )
-    .bind(planId)
-    .all();
+  let results;
+  try {
+    ({ results } = await context.env.DB
+      .prepare(
+        `SELECT
+          c.id, c.plan_id, c.family, c.title, c.preconditions, c.steps,
+          c.expected, c.priority, c.source, c.removed_from_md,
+          c.created_at, c.updated_at,
+          COALESCE(pf.label, '') AS family_label,
+          (SELECT COUNT(*) FROM runs r WHERE r.plan_id = c.plan_id AND r.case_id = c.id) AS run_count,
+          (SELECT r.status FROM runs r
+            WHERE r.plan_id = c.plan_id AND r.case_id = c.id
+            ORDER BY COALESCE(r.updated_at, r.created_at) DESC LIMIT 1) AS latest_status,
+          (SELECT COUNT(*) FROM runs r
+            WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'bug') AS bug_count,
+          (SELECT COUNT(*) FROM case_checklist_items ci
+            WHERE ci.plan_id = c.plan_id AND ci.case_id = c.id) AS checklist_count,
+          (SELECT json_group_array(json_object('id', ci.id, 'position', ci.position, 'label', ci.label))
+            FROM (SELECT id, position, label FROM case_checklist_items
+                  WHERE plan_id = c.plan_id AND case_id = c.id
+                  ORDER BY position) ci) AS checklist_json
+        FROM cases c
+        LEFT JOIN plan_families pf ON pf.plan_id = c.plan_id AND pf.family = c.family
+        WHERE c.plan_id = ?
+        ORDER BY c.family, c.id`,
+      )
+      .bind(planId)
+      .all());
+  } catch {
+    // Fallback si migration 0006 (plan_families) pas encore appliquée
+    ({ results } = await context.env.DB
+      .prepare(
+        `SELECT
+          c.id, c.plan_id, c.family, c.title, c.preconditions, c.steps,
+          c.expected, c.priority, c.source, c.removed_from_md,
+          c.created_at, c.updated_at,
+          '' AS family_label,
+          (SELECT COUNT(*) FROM runs r WHERE r.plan_id = c.plan_id AND r.case_id = c.id) AS run_count,
+          (SELECT r.status FROM runs r
+            WHERE r.plan_id = c.plan_id AND r.case_id = c.id
+            ORDER BY COALESCE(r.updated_at, r.created_at) DESC LIMIT 1) AS latest_status,
+          (SELECT COUNT(*) FROM runs r
+            WHERE r.plan_id = c.plan_id AND r.case_id = c.id AND r.status = 'bug') AS bug_count,
+          (SELECT COUNT(*) FROM case_checklist_items ci
+            WHERE ci.plan_id = c.plan_id AND ci.case_id = c.id) AS checklist_count,
+          (SELECT json_group_array(json_object('id', ci.id, 'position', ci.position, 'label', ci.label))
+            FROM (SELECT id, position, label FROM case_checklist_items
+                  WHERE plan_id = c.plan_id AND case_id = c.id
+                  ORDER BY position) ci) AS checklist_json
+        FROM cases c
+        WHERE c.plan_id = ?
+        ORDER BY c.family, c.id`,
+      )
+      .bind(planId)
+      .all());
+  }
 
   const cases = results.map((row) => {
     const { checklist_json, ...rest } = row;

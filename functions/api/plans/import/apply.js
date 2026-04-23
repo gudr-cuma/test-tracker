@@ -61,7 +61,7 @@ async function _handle(context) {
 
   const body = await readJson(context.request);
   if (!body) return error(400, 'invalid JSON body');
-  const { md, filename, planId: inputPlanId, accepted, cases: incomingCases, title: incomingTitle } = body;
+  const { md, filename, planId: inputPlanId, accepted, cases: incomingCases, title: incomingTitle, familyLabels } = body;
 
   let parsed;
   let importSource;
@@ -125,6 +125,7 @@ async function _handle(context) {
       }
     }
     await db.batch(statements);
+    await upsertFamilyLabels(db, planId, familyLabels);
     return json({ planId, versionId, applied: { added: parsed.cases.length, changed: 0, removed: 0 } }, { status: 201 });
   }
 
@@ -275,9 +276,29 @@ async function _handle(context) {
 
   await db.batch(statements);
 
+  await upsertFamilyLabels(db, inputPlanId, familyLabels);
+
   return json({
     planId: inputPlanId,
     versionId,
     applied: { added: addedApplied, changed: changedApplied, removed: removedApplied },
   });
+}
+
+async function upsertFamilyLabels(db, planId, familyLabels) {
+  if (!familyLabels || typeof familyLabels !== 'object') return;
+  const entries = Object.entries(familyLabels).filter(
+    ([family, label]) => family && typeof label === 'string' && label.trim(),
+  );
+  if (entries.length === 0) return;
+  try {
+    await db.batch(
+      entries.map(([family, label]) =>
+        db.prepare(
+          `INSERT INTO plan_families (plan_id, family, label) VALUES (?, ?, ?)
+           ON CONFLICT (plan_id, family) DO UPDATE SET label = excluded.label`,
+        ).bind(planId, family, label.trim()),
+      ),
+    );
+  } catch { /* migration 0006 non encore appliquée — ignorer */ }
 }

@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 const COLUMNS = [
   { key: 'id',            header: 'ID' },
   { key: 'family',        header: 'Famille' },
+  { key: 'family_label',  header: 'Libellé famille' },
   { key: 'title',         header: 'Titre' },
   { key: 'preconditions', header: 'Préconditions' },
   { key: 'steps',         header: 'Étapes' },
@@ -37,6 +38,7 @@ export function exportCasesToXlsx(planTitle, cases) {
   ws['!cols'] = [
     { wch: 16 },  // ID
     { wch: 14 },  // Famille
+    { wch: 30 },  // Libellé famille
     { wch: 36 },  // Titre
     { wch: 30 },  // Préconditions
     { wch: 40 },  // Étapes
