@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore.js';
+import { useAuthStore } from '../../store/useAuthStore.js';
 import Button from '../shared/Button.jsx';
 import EmptyState from '../shared/EmptyState.jsx';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Spinner from '../shared/Spinner.jsx';
 import PlanCard from './PlanCard.jsx';
+import NewPlanDialog from './NewPlanDialog.jsx';
 
 export default function PlansList() {
   const plans = useStore((s) => s.plans);
@@ -14,6 +16,9 @@ export default function PlansList() {
   const loadPlans = useStore((s) => s.loadPlans);
   const refreshPlans = useStore((s) => s.refreshPlans);
   const openDialog = useStore((s) => s.openDialog);
+  const canImport = useAuthStore((s) => s.user?.can_import);
+
+  const [newPlanOpen, setNewPlanOpen] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -25,12 +30,19 @@ export default function PlansList() {
         <div>
           <h1 className="text-2xl font-semibold text-fv-text">Cahiers de test</h1>
           <p className="mt-1 text-sm text-fv-text-secondary">
-            Importez un cahier markdown, puis suivez les exécutions au fil de l&rsquo;eau.
+            Créez un cahier vide ou importez un fichier existant.
           </p>
         </div>
-        <Button variant="primary" onClick={() => openDialog({ type: 'import' })}>
-          Importer un cahier
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setNewPlanOpen(true)}>
+            + Nouveau cahier
+          </Button>
+          {canImport ? (
+            <Button variant="primary" onClick={() => openDialog({ type: 'import' })}>
+              Importer un cahier
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {error ? (
@@ -46,11 +58,18 @@ export default function PlansList() {
       ) : plans.length === 0 && loadedOnce ? (
         <EmptyState
           title="Aucun cahier pour l'instant"
-          description="Importez votre premier fichier markdown pour créer un cahier. Les cas de test seront extraits automatiquement."
+          description="Créez un cahier vide pour commencer à saisir des cas manuellement, ou importez un fichier markdown / Excel."
           action={
-            <Button variant="primary" onClick={() => openDialog({ type: 'import' })}>
-              Importer un cahier
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="primary" onClick={() => setNewPlanOpen(true)}>
+                + Nouveau cahier
+              </Button>
+              {canImport ? (
+                <Button variant="secondary" onClick={() => openDialog({ type: 'import' })}>
+                  Importer un cahier
+                </Button>
+              ) : null}
+            </div>
           }
         />
       ) : (
@@ -60,6 +79,10 @@ export default function PlansList() {
           ))}
         </div>
       )}
+
+      {newPlanOpen ? (
+        <NewPlanDialog onClose={() => setNewPlanOpen(false)} />
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,31 @@
-import { json, methodNotAllowed } from '../../_lib/http.js';
+import { json, error, methodNotAllowed, readJson, uuid, now } from '../../_lib/http.js';
 
 export async function onRequest(context) {
-  if (context.request.method !== 'GET') return methodNotAllowed(['GET']);
+  if (context.request.method === 'POST') {
+    const body = await readJson(context.request);
+    if (!body?.title?.trim()) return error(400, 'Le titre est requis');
+
+    const id = uuid();
+    const ts = now();
+    const user = context.data.user;
+
+    await context.env.DB.prepare(
+      `INSERT INTO plans (id, title, project_id, color, icon, owner_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      id,
+      body.title.trim(),
+      body.project_id || null,
+      body.color || null,
+      body.icon || null,
+      user.id,
+      ts, ts,
+    ).run();
+
+    return json({ plan: { id, title: body.title.trim() } }, { status: 201 });
+  }
+
+  if (context.request.method !== 'GET') return methodNotAllowed(['GET', 'POST']);
 
   const user = context.data.user;
   const ownerFilter = user.admin_plans ? '' : 'AND (p.owner_id = ? OR p.owner_id IS NULL)';

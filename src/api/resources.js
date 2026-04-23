@@ -5,6 +5,7 @@ export const plansApi = {
   list: () => api.get('/api/plans'),
   get: (id, { withMd = false } = {}) =>
     api.get(`/api/plans/${encodeURIComponent(id)}${withMd ? '?md=1' : ''}`),
+  create: (body) => api.post('/api/plans', body),
   update: (id, patch) => api.patch(`/api/plans/${encodeURIComponent(id)}`, patch),
   archive: (id) => api.delete(`/api/plans/${encodeURIComponent(id)}`),
 };
