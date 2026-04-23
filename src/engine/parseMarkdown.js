@@ -1,5 +1,5 @@
-const CASE_ID_RE = /^TC-[A-Z]+-\d+$/;
-const FAMILY_HEADING_RE = /^#{2,4}\s+.*?TC-([A-Z]+)/;
+const CASE_ID_RE = /^TC-[A-Z0-9]+-\d+$/;
+const FAMILY_HEADING_RE = /^#{2,4}\s+.*?TC-([A-Z0-9]+)/;
 const HEADING_RE = /^#{1,6}\s/;
 const SEPARATOR_CELL_RE = /^:?-+:?$/;
 
@@ -42,7 +42,7 @@ function isSeparatorRow(cells) {
  *    ID itself.
  *  - Cases are rows of a 6-column pipe table:
  *      | ID | Titre | Préconditions | Étapes | Résultat attendu | Priorité |
- *    where ID matches /^TC-[A-Z]+-\d+$/.
+ *    where ID matches /^TC-[A-Z0-9]+-\d+$/.
  *  - Separator rows (|---|---|) and header rows (first cell not a TC-ID) are
  *    ignored. Non-table content is ignored.
  *
@@ -106,7 +106,7 @@ export function parseMarkdown(md) {
     seen.add(first);
 
     const [id, caseTitle, preconditions, steps, expected, priority] = cells;
-    const family = currentFamily || id.match(/^TC-([A-Z]+)-/)[1];
+    const family = currentFamily || id.match(/^TC-([A-Z0-9]+)-/)[1];
 
     cases.push({
       id,

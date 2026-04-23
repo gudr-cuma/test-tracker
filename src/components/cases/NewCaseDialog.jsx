@@ -6,7 +6,7 @@ import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Modal from '../shared/Modal.jsx';
 import Spinner from '../shared/Spinner.jsx';
 
-const ID_PATTERN = /^TC-[A-Z]+-\d+$/;
+const ID_PATTERN = /^TC-[A-Z0-9]+-\d+$/;
 
 /**
  * Create a manual case. Suggests the next free ID for the chosen family
@@ -35,7 +35,7 @@ export default function NewCaseDialog({ planId, existingCases, onCreated, onClos
   const [error, setError] = useState(null);
 
   // Auto-suggest an ID when family changes and id is empty or auto-filled.
-  const idLooksAutoFilled = !form.id || /^TC-[A-Z]+-\d+$/.test(form.id);
+  const idLooksAutoFilled = !form.id || /^TC-[A-Z0-9]+-\d+$/.test(form.id);
   function handleFamilyChange(family) {
     const next = { ...form, family };
     if (idLooksAutoFilled && family) {

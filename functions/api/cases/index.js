@@ -50,8 +50,8 @@ async function createCase(context) {
   if (!plan_id || !id || !title) {
     return error(400, 'plan_id, id and title are required');
   }
-  if (!/^TC-[A-Z]+-\d+$/.test(id)) {
-    return error(400, 'id must match /^TC-[A-Z]+-\\d+$/');
+  if (!/^TC-[A-Z0-9]+-\d+$/.test(id)) {
+    return error(400, 'id must match /^TC-[A-Z0-9]+-\\d+$/');
   }
 
   const plan = await context.env.DB
@@ -74,7 +74,7 @@ async function createCase(context) {
     )
     .bind(
       id, plan_id,
-      family || id.match(/^TC-([A-Z]+)-/)[1],
+      family || id.match(/^TC-([A-Z0-9]+)-/)[1],
       title,
       preconditions || null,
       steps || null,

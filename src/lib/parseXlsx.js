@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 
-const ID_RE = /^TC-[A-Z]+-\d+$/;
-const FAMILY_RE = /^TC-([A-Z]+)-/;
+const ID_RE = /^TC-[A-Z0-9]+-\d+$/;
+const FAMILY_RE = /^TC-([A-Z0-9]+)-/;
 const CHECK_RE = /^CHECK_(\d+)$/i;
 
 export function parseXlsx(buffer, filenameWithoutExt) {
