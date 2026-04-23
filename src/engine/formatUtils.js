@@ -29,6 +29,7 @@ export const STATUS_LABELS = {
   'en-cours': 'En cours',
   fait: 'Fait',
   bug: 'Bug',
+  evolution: 'Évolution',
   'en-pause': 'En pause',
   clos: 'Clos',
 };
@@ -38,6 +39,7 @@ export const STATUS_COLORS = {
   'en-cours': 'bg-fv-orange-light text-fv-orange-dark',
   fait: 'bg-fv-green-light text-fv-green-dark',
   bug: 'bg-red-100 text-fv-red',
+  evolution: 'bg-purple-100 text-purple-700',
   'en-pause': 'bg-fv-blue-light text-fv-text',
   clos: 'bg-fv-green-light text-fv-forest',
 };

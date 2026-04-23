@@ -1,7 +1,7 @@
 import { json, error, methodNotAllowed, readJson, uuid, now } from '../../_lib/http.js';
 
 const VALID_STATUSES = new Set([
-  'a-faire', 'en-cours', 'fait', 'bug', 'en-pause', 'clos',
+  'a-faire', 'en-cours', 'fait', 'bug', 'evolution', 'en-pause', 'clos',
 ]);
 
 async function listRuns(context) {

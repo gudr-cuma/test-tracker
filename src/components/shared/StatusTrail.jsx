@@ -6,6 +6,7 @@ const STATUS_COLORS_HEX = {
   'en-cours': '#FF8200',
   fait:       '#31B700',
   bug:        '#E53935',
+  evolution:  '#9333EA',
   'en-pause': '#B1DCE2',
   clos:       '#00965E',
 };

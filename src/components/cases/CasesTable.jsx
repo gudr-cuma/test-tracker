@@ -5,7 +5,7 @@ import { useStore } from '../../store/useStore.js';
 import { useAuthStore } from '../../store/useAuthStore.js';
 import StatusBadge from '../shared/StatusBadge.jsx';
 
-const STATUS_ORDER = ['a-faire', 'en-cours', 'en-pause', 'bug', 'fait', 'clos']
+const STATUS_ORDER = ['a-faire', 'en-cours', 'en-pause', 'bug', 'evolution', 'fait', 'clos']
   .reduce((acc, key, i) => { acc[key] = i; return acc; }, {});
 
 const SORT_ACCESSORS = {

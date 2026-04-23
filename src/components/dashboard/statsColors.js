@@ -6,6 +6,7 @@ export const STATUS_CHART_COLORS = {
   'en-cours': '#FF8200',  // fv-orange
   fait: '#31B700',        // fv-green
   bug: '#E53935',         // fv-red
+  evolution: '#9333EA',   // violet
   'en-pause': '#B1DCE2',  // fv-blue
   clos: '#00965E',        // fv-forest
 };
@@ -17,6 +18,7 @@ export const STATUS_ORDER = [
   'en-cours',
   'en-pause',
   'bug',
+  'evolution',
   'fait',
   'clos',
 ];
