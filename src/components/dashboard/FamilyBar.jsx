@@ -13,9 +13,8 @@ import { STATUS_LABELS } from '../../engine/formatUtils.js';
 import { STATUS_CHART_COLORS, STATUS_ORDER } from './statsColors.js';
 
 /**
- * Barres empilées : une barre par famille, un segment par statut. `byFamily`
- * est au format { 'AUTH': { 'a-faire': 2, fait: 5, ... }, ... }. On pivote en
- * lignes pour recharts.
+ * Barres empilées horizontales : une ligne par famille, un segment par statut.
+ * `byFamily` est au format { 'AUTH': { 'a-faire': 2, fait: 5, … }, … }.
  */
 export default function FamilyBar({ byFamily = {} }) {
   const data = useMemo(() => {
@@ -41,36 +40,45 @@ export default function FamilyBar({ byFamily = {} }) {
     );
   }
 
+  // Hauteur dynamique : 44 px par famille + marges
+  const height = Math.max(240, data.length * 44 + 64);
+
   return (
-    <div className="h-[320px] w-full">
+    <div style={{ height }} className="w-full">
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-          <XAxis
-            dataKey="family"
-            tick={{ fontSize: 12, fill: '#718096' }}
-            tickLine={false}
-            axisLine={{ stroke: '#E2E8F0' }}
-          />
+        <BarChart
+          layout="vertical"
+          data={data}
+          margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
+          barSize={22}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" horizontal={false} />
+
+          {/* Axe catégories (familles) à gauche */}
           <YAxis
+            type="category"
+            dataKey="family"
+            width={72}
+            tick={{ fontSize: 12, fill: '#718096', fontFamily: 'monospace', fontWeight: 600 }}
+            tickLine={false}
+            axisLine={false}
+          />
+
+          {/* Axe valeurs en bas */}
+          <XAxis
+            type="number"
             allowDecimals={false}
-            tick={{ fontSize: 12, fill: '#718096' }}
+            tick={{ fontSize: 11, fill: '#718096' }}
             tickLine={false}
             axisLine={{ stroke: '#E2E8F0' }}
           />
+
           <Tooltip
-            contentStyle={{
-              fontSize: 12,
-              borderRadius: 6,
-              border: '1px solid #E2E8F0',
-            }}
-            // On filtre les séries vides dans le tooltip pour éviter le bruit.
+            contentStyle={{ fontSize: 12, borderRadius: 6, border: '1px solid #E2E8F0' }}
             itemSorter={(item) => -item.value}
           />
-          <Legend
-            iconType="circle"
-            wrapperStyle={{ fontSize: 12 }}
-          />
+          <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+
           {STATUS_ORDER.map((s) => (
             <Bar
               key={s}
@@ -78,8 +86,8 @@ export default function FamilyBar({ byFamily = {} }) {
               name={STATUS_LABELS[s] || s}
               stackId="status"
               fill={STATUS_CHART_COLORS[s]}
-              // Arrondir le haut de la dernière barre de la pile.
-              radius={s === 'clos' ? [4, 4, 0, 0] : 0}
+              // Arrondir l'extrémité droite de la dernière barre de la pile
+              radius={s === 'clos' ? [0, 4, 4, 0] : 0}
             />
           ))}
         </BarChart>
