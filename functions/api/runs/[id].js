@@ -47,6 +47,11 @@ async function patchRun(context) {
     values.push(body.checklist_item_id || null);
   }
 
+  if ('bug_url' in body) {
+    sets.push('bug_url = ?');
+    values.push(body.bug_url ? String(body.bug_url).trim() : null);
+  }
+
   // Manual overrides
   if ('started_at' in body) {
     sets.push('started_at = ?');

@@ -91,6 +91,18 @@ export default function RunsTimeline({ planId, caseId, checklist = [], onChanged
     }
   }
 
+  async function handleBugUrlChange(run, url) {
+    markBusy(run.id, true);
+    try {
+      const res = await runsApi.update(run.id, { bug_url: url });
+      setRuns((prev) => prev.map((r) => (r.id === run.id ? { ...r, ...res.run } : r)));
+    } catch (e) {
+      showToast('error', `Sauvegarde de l'URL impossible : ${e.message || e}`);
+    } finally {
+      markBusy(run.id, false);
+    }
+  }
+
   async function handleDelete(run) {
     if (!window.confirm(`Supprimer ce run (${runStatusLabel(run.status)}) ?`)) return;
     markBusy(run.id, true);
@@ -141,6 +153,7 @@ export default function RunsTimeline({ planId, caseId, checklist = [], onChanged
               busy={busyIds.has(run.id)}
               onStatusChange={(s) => handleStatusChange(run, s)}
               onChecklistItemChange={(itemId) => handleChecklistItemChange(run, itemId)}
+              onBugUrlChange={(url) => handleBugUrlChange(run, url)}
               onDelete={() => handleDelete(run)}
             />
           ))}
@@ -150,10 +163,24 @@ export default function RunsTimeline({ planId, caseId, checklist = [], onChanged
   );
 }
 
-function RunRow({ run, checklist = [], busy, onStatusChange, onChecklistItemChange, onDelete }) {
+function RunRow({ run, checklist = [], busy, onStatusChange, onChecklistItemChange, onDelete, onBugUrlChange }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(null);
+  const [urlDraft, setUrlDraft] = useState(run.bug_url || '');
+  const [urlBusy, setUrlBusy] = useState(false);
   const hasChecklist = checklist.length > 0;
+  const showBugUrl = run.status === 'bug' || run.status === 'evolution';
+
+  async function saveUrl() {
+    const trimmed = urlDraft.trim();
+    if (trimmed === (run.bug_url || '')) return;
+    setUrlBusy(true);
+    try {
+      await onBugUrlChange(trimmed || null);
+    } finally {
+      setUrlBusy(false);
+    }
+  }
 
   return (
     <li className="rounded-md border border-fv-border bg-white p-3">
@@ -201,6 +228,34 @@ function RunRow({ run, checklist = [], busy, onStatusChange, onChecklistItemChan
             currentItemId={run.checklist_item_id}
             runStatus={run.status}
           />
+        </div>
+      ) : null}
+
+      {/* Champ URL ticket sprint — visible quand status est bug ou evolution */}
+      {showBugUrl ? (
+        <div className="mt-2 flex items-center gap-1.5">
+          <input
+            type="url"
+            value={urlDraft}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            onBlur={saveUrl}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveUrl(); } }}
+            placeholder="URL du ticket sprint…"
+            disabled={urlBusy}
+            className="min-w-0 flex-1 rounded-md border border-fv-border px-2.5 py-1 text-xs text-fv-text placeholder:text-fv-text-secondary/60 focus:border-fv-orange focus:outline-none focus:ring-1 focus:ring-fv-orange disabled:opacity-60"
+          />
+          {urlDraft.trim() ? (
+            <a
+              href={urlDraft.trim()}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Ouvrir le ticket"
+              className="shrink-0 rounded-md border border-fv-border bg-white px-2 py-1 text-xs font-medium text-fv-text-secondary transition hover:border-fv-orange hover:text-fv-orange"
+            >
+              Ouvrir →
+            </a>
+          ) : null}
+          {urlBusy ? <Spinner size={12} /> : null}
         </div>
       ) : null}
 
