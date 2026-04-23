@@ -4,6 +4,26 @@ const ID_RE = /^TC-[A-Z0-9]+-\d+$/;
 const FAMILY_RE = /^TC-([A-Z0-9]+)-/;
 const CHECK_RE = /^CHECK_(\d+)$/i;
 
+function normalizeHeader(h) {
+  return String(h ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function detectColumn(header) {
+  const h = normalizeHeader(header);
+  if (!h) return null;
+  if (/^id\b/.test(h) || h === 'identifiant' || h.startsWith('identifiant')) return 'id';
+  if (/^famille/.test(h)) return 'family';
+  if (/^titre/.test(h) || h === 'nom' || /^intitul/.test(h)) return 'title';
+  if (/^pr[eé]condition/.test(h)) return 'preconditions';
+  if (/^[eé]tape/.test(h)) return 'steps';
+  if (/^r[eé]sultat/.test(h) || /attendu/.test(h)) return 'expected';
+  if (/^priorit[eé]/.test(h)) return 'priority';
+  return null;
+}
+
 export function parseXlsx(buffer, filenameWithoutExt) {
   const wb = XLSX.read(buffer, { type: 'array' });
   const sheetName = wb.SheetNames[0];
@@ -14,22 +34,42 @@ export function parseXlsx(buffer, filenameWithoutExt) {
 
   if (rows.length < 2) throw new Error('Aucune ligne de données trouvée dans le fichier.');
 
-  // Detect CHECK_NNN columns from the header row, ordered by numeric suffix.
-  const headerRow = rows[0].map((h) => String(h ?? '').trim());
+  const headerRow = rows[0].map((h) => String(h ?? ''));
+
+  // Map field name → column index, by fuzzy header matching.
+  const colMap = {};
   const checkColumns = [];
-  for (let col = 7; col < headerRow.length; col++) {
-    const m = CHECK_RE.exec(headerRow[col]);
-    if (m) checkColumns.push({ col, n: Number(m[1]) });
+  for (let col = 0; col < headerRow.length; col++) {
+    const raw = headerRow[col];
+    const checkMatch = CHECK_RE.exec(String(raw).trim());
+    if (checkMatch) {
+      checkColumns.push({ col, n: Number(checkMatch[1]) });
+      continue;
+    }
+    const field = detectColumn(raw);
+    if (field && colMap[field] === undefined) colMap[field] = col;
   }
   checkColumns.sort((a, b) => a.n - b.n);
+
+  if (colMap.id === undefined) {
+    throw new Error('Colonne identifiant introuvable dans l\'en-tête (attendu : "ID" ou "ID Test").');
+  }
+  if (colMap.title === undefined) {
+    throw new Error('Colonne titre introuvable dans l\'en-tête (attendu : "Titre" ou "Titre du test").');
+  }
+
+  const cellAt = (row, field) => {
+    const col = colMap[field];
+    if (col === undefined) return '';
+    return String(row[col] ?? '').trim();
+  };
 
   const cases = [];
   const seen = new Set();
 
   for (let i = 1; i < rows.length; i++) {
-    const row = rows[i].map((cell) => String(cell ?? '').trim());
-    const [rawId, rawFamily, rawTitle, rawPre, rawSteps, rawExpected, rawPriority] = row;
-
+    const row = rows[i];
+    const rawId = cellAt(row, 'id');
     if (!rawId) continue;
 
     if (!ID_RE.test(rawId)) {
@@ -44,18 +84,18 @@ export function parseXlsx(buffer, filenameWithoutExt) {
 
     const checklist = [];
     for (const { col } of checkColumns) {
-      const label = row[col] ?? '';
+      const label = String(row[col] ?? '').trim();
       if (label) checklist.push({ position: checklist.length, label });
     }
 
     cases.push({
       id: rawId,
-      family: rawFamily || familyFromId,
-      title: rawTitle,
-      preconditions: rawPre,
-      steps: rawSteps,
-      expected: rawExpected,
-      priority: rawPriority,
+      family: cellAt(row, 'family') || familyFromId,
+      title: cellAt(row, 'title'),
+      preconditions: cellAt(row, 'preconditions'),
+      steps: cellAt(row, 'steps'),
+      expected: cellAt(row, 'expected'),
+      priority: cellAt(row, 'priority'),
       checklist,
     });
   }
