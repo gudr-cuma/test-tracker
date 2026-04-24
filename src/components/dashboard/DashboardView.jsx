@@ -54,35 +54,28 @@ export default function DashboardView({ planId }) {
     <div className="flex flex-col gap-4">
       {error ? <ErrorBanner message={error} onRetry={reload} /> : null}
 
-      {/* KPIs — 2 lignes de 3 */}
-      <div className="grid grid-cols-3 gap-3">
-        <Kpi label="Cas actifs"            value={kpis.total} />
-        <Kpi label="Terminés (fait + clos)" value={kpis.done}               accent="green" />
-        <Kpi label="Avancement"             value={`${kpis.pct}%`}          accent="orange" />
-        <Kpi label="En bug"                 value={kpis.byStatus.bug || 0}  accent="red" />
-        <Kpi label="Évolution"              value={kpis.byStatus.evolution || 0} accent="purple" />
-        <Kpi label="Temps cumulé"           value={formatDuration(stats.totals?.total_time_ms || 0)} />
-      </div>
-
-      {/* Répartition par famille — pleine largeur en premier */}
-      <DashboardCard title="Répartition par famille" subtitle="Empilé par statut · temps à droite">
-        <FamilyBar byFamily={stats.byFamily || {}} byFamilyTime={stats.byFamilyTime || {}} />
-      </DashboardCard>
-
-      {/* Donut + progression cumulée côte à côte */}
+      {/* Ligne principale : [KPIs + Donut] à gauche | [Famille] à droite */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <DashboardCard title="Statut courant des cas" subtitle={`${kpis.total} cas actifs`}>
-          <StatusDonut byStatus={kpis.byStatus} total={kpis.total} />
-        </DashboardCard>
 
-        <DashboardCard
-          title="Progression cumulée"
-          subtitle="Cas terminés (fait + clos) au fil du temps"
-        >
-          <CumulativeLine
-            cumulative={stats.cumulative || []}
-            totalActiveCases={kpis.total}
-          />
+        {/* Colonne gauche : KPIs 2×3 + Donut en dessous */}
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-3 gap-3">
+            <Kpi label="Cas actifs"             value={kpis.total} />
+            <Kpi label="Terminés (fait + clos)" value={kpis.done}                    accent="green" />
+            <Kpi label="Avancement"             value={`${kpis.pct}%`}               accent="orange" />
+            <Kpi label="En bug"                 value={kpis.byStatus.bug || 0}       accent="red" />
+            <Kpi label="Évolution"              value={kpis.byStatus.evolution || 0} accent="purple" />
+            <Kpi label="Temps cumulé"           value={formatDuration(stats.totals?.total_time_ms || 0)} />
+          </div>
+
+          <DashboardCard title="Statut courant des cas" subtitle={`${kpis.total} cas actifs`}>
+            <StatusDonut byStatus={kpis.byStatus} total={kpis.total} />
+          </DashboardCard>
+        </div>
+
+        {/* Colonne droite : Répartition par famille */}
+        <DashboardCard title="Répartition par famille" subtitle="Empilé par statut · temps à droite">
+          <FamilyBar byFamily={stats.byFamily || {}} byFamilyTime={stats.byFamilyTime || {}} />
         </DashboardCard>
       </div>
 
