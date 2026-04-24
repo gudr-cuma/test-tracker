@@ -1,5 +1,6 @@
 import { json, error, methodNotAllowed, readJson, now } from '../../_lib/http.js';
-import { VALID_STATUSES } from './index.js';
+import { VALID_STATUSES, NON_ACTIVE_STATUSES } from './index.js';
+import { closeOpenInterval, gcStaleIntervals, openInterval } from '../../_lib/runTimer.js';
 
 async function patchRun(context) {
   const body = await readJson(context.request);
@@ -71,6 +72,20 @@ async function patchRun(context) {
   await context.env.DB
     .prepare(`UPDATE runs SET ${sets.join(', ')} WHERE id = ?`)
     .bind(...values).run();
+
+  // Synchronisation du timer avec le statut.
+  try {
+    await gcStaleIntervals(context.env.DB, context.params.id);
+    if ('status' in body && body.status !== current.status) {
+      const userId = context.data.user?.id || null;
+      if (NON_ACTIVE_STATUSES.has(body.status)) {
+        await closeOpenInterval(context.env.DB, context.params.id, 'status');
+      } else if (NON_ACTIVE_STATUSES.has(current.status)) {
+        // On repasse à un statut actif depuis un statut stoppant → réouvre.
+        await openInterval(context.env.DB, context.params.id, userId);
+      }
+    }
+  } catch { /* tables timer absentes si migration pas jou�e */ }
 
   const updated = await context.env.DB
     .prepare('SELECT * FROM runs WHERE id = ?')

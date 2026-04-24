@@ -80,9 +80,28 @@ async function getProjectStats(context) {
     else if (latest_status === 'en-cours') s.in_progress += 1;
   }
 
+  // Total temps pass� par plan (somme de tous les intervalles, ouverts compris).
+  const timeByPlan = new Map();
+  try {
+    const { results: timeRows } = await context.env.DB
+      .prepare(
+        `SELECT r.plan_id,
+                COALESCE(SUM(
+                  (julianday(COALESCE(rti.ended_at, 'now')) - julianday(rti.started_at)) * 86400000
+                ), 0) AS total_ms
+         FROM run_time_intervals rti
+         JOIN runs r ON r.id = rti.run_id
+         WHERE r.plan_id IN (${placeholders})
+         GROUP BY r.plan_id`,
+      )
+      .bind(...planIds).all();
+    for (const row of timeRows) timeByPlan.set(row.plan_id, Math.round(row.total_ms || 0));
+  } catch { /* migration 0011 pas jou�e */ }
+
   const byUser = plans.map((p) => {
     const s = planStats.get(p.id);
     s.pct = s.cases > 0 ? Math.round((s.done / s.cases) * 100) : 0;
+    s.total_time_ms = timeByPlan.get(p.id) || 0;
     return s;
   });
 
@@ -92,9 +111,10 @@ async function getProjectStats(context) {
       acc.done += s.done;
       acc.bug += s.bug;
       acc.evolution += s.evolution;
+      acc.total_time_ms += s.total_time_ms || 0;
       return acc;
     },
-    { cases: 0, done: 0, bug: 0, evolution: 0 },
+    { cases: 0, done: 0, bug: 0, evolution: 0, total_time_ms: 0 },
   );
 
   return json({ byUser, totals });

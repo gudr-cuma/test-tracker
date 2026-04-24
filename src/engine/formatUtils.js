@@ -34,6 +34,20 @@ export const STATUS_LABELS = {
   clos: 'Clos',
 };
 
+/**
+ * Formate une durée en ms vers une chaîne lisible.
+ *  - < 1 h : "mm:ss"
+ *  - >= 1 h : "Nh Mm"
+ */
+export function formatDuration(ms) {
+  const n = Math.max(0, Math.floor((ms || 0) / 1000));
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const s = n % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 export const STATUS_COLORS = {
   'a-faire': 'bg-gray-100 text-gray-700',
   'en-cours': 'bg-fv-orange-light text-fv-orange-dark',

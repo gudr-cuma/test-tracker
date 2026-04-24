@@ -77,10 +77,27 @@ export async function onRequest(context) {
     )
     .bind(planId).all();
 
+  // 4. Temps total pass� sur le plan (somme de tous les intervalles).
+  let totalTimeMs = 0;
+  try {
+    const row = await db
+      .prepare(
+        `SELECT COALESCE(SUM(
+                  (julianday(COALESCE(rti.ended_at, 'now')) - julianday(rti.started_at)) * 86400000
+                ), 0) AS total_ms
+         FROM run_time_intervals rti
+         JOIN runs r ON r.id = rti.run_id
+         WHERE r.plan_id = ?`,
+      )
+      .bind(planId).first();
+    totalTimeMs = Math.round(row?.total_ms || 0);
+  } catch { /* migration 0011 pas jou�e */ }
+
   return json({
     totals: {
       cases: statusRows.results.length,
       byStatus,
+      total_time_ms: totalTimeMs,
     },
     byFamily,
     cumulative: cumulativeSeries,

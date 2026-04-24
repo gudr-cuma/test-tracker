@@ -83,6 +83,13 @@ export const runsApi = {
     api.patch(`/api/runs/${encodeURIComponent(runId)}`, patch),
   delete: (runId) =>
     api.delete(`/api/runs/${encodeURIComponent(runId)}`),
+  setChecklistItem: (runId, itemId, { result, url } = {}) =>
+    api.put(
+      `/api/runs/${encodeURIComponent(runId)}/checklist/${encodeURIComponent(itemId)}`,
+      { result, url },
+    ),
+  timer: (runId, action) =>
+    api.post(`/api/runs/${encodeURIComponent(runId)}/timer`, { action }),
 };
 
 // ─── Checklist ──────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import {
   Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { projectsApi } from '../../api/resources.js';
-import { STATUS_LABELS } from '../../engine/formatUtils.js';
+import { STATUS_LABELS, formatDuration } from '../../engine/formatUtils.js';
 import { STATUS_CHART_COLORS, STATUS_ORDER } from '../dashboard/statsColors.js';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Spinner from '../shared/Spinner.jsx';
@@ -63,11 +63,12 @@ export default function ProjectDashboard({ projectId }) {
   return (
     <div className="flex flex-col gap-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <KpiTile label="Total cas" value={totals.cases ?? 0} />
         <KpiTile label="Terminés" value={totals.done ?? 0} />
         <KpiTile label="Avancement moyen" value={`${avgPct}%`} highlight />
         <KpiTile label="En bug" value={totals.bug ?? 0} danger />
+        <KpiTile label="Temps cumulé" value={formatDuration(totals.total_time_ms || 0)} />
       </div>
 
       {byUser.length === 0 ? (
@@ -86,6 +87,7 @@ export default function ProjectDashboard({ projectId }) {
                   <th className="px-4 py-2 text-right">Terminés</th>
                   <th className="px-4 py-2 text-right">Bugs</th>
                   <th className="px-4 py-2 text-right">Évolutions</th>
+                  <th className="px-4 py-2 text-right">Temps</th>
                   <th className="px-4 py-2 text-right">Avancement</th>
                 </tr>
               </thead>
@@ -100,6 +102,7 @@ export default function ProjectDashboard({ projectId }) {
                     <td className="px-4 py-2 text-right tabular-nums text-fv-green-dark">{u.done}</td>
                     <td className="px-4 py-2 text-right tabular-nums text-fv-red">{u.bug}</td>
                     <td className="px-4 py-2 text-right tabular-nums text-purple-600">{u.evolution}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-fv-text-secondary">{formatDuration(u.total_time_ms || 0)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <div className="h-1.5 w-20 rounded-full bg-gray-100">

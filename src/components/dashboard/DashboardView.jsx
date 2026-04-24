@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { statsApi } from '../../api/resources.js';
-import { STATUS_LABELS } from '../../engine/formatUtils.js';
+import { STATUS_LABELS, formatDuration } from '../../engine/formatUtils.js';
 import ErrorBanner from '../shared/ErrorBanner.jsx';
 import Spinner from '../shared/Spinner.jsx';
 import CumulativeLine from './CumulativeLine.jsx';
@@ -70,12 +70,13 @@ export default function DashboardView({ planId }) {
     <div className="flex flex-col gap-4">
       {error ? <ErrorBanner message={error} onRetry={reload} /> : null}
 
-      {/* KPI en tête : total, terminés, % */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* KPI en tête : total, terminés, %, temps cumulé */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi label="Cas actifs" value={kpis.total} />
         <Kpi label="Terminés (fait + clos)" value={kpis.done} accent="green" />
         <Kpi label="Avancement" value={`${kpis.pct}%`} accent="orange" />
         <Kpi label="En bug" value={kpis.byStatus.bug || 0} accent="red" />
+        <Kpi label="Temps cumulé" value={formatDuration(stats.totals?.total_time_ms || 0)} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
