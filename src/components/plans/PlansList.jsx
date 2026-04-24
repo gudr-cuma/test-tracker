@@ -40,7 +40,7 @@ export default function PlansList() {
   const otherPlans = isAdminPlans ? plans.filter((p) => p.owner_id !== user?.id) : [];
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
+    <div className="p-6">
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-fv-text">Cahiers de test</h1>
