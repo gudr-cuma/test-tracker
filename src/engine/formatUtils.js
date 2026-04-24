@@ -57,3 +57,14 @@ export const STATUS_COLORS = {
   'en-pause': 'bg-fv-blue-light text-fv-text',
   clos: 'bg-fv-green-light text-fv-forest',
 };
+
+/** Fond de couleur seul, aligné sur STATUS_COLORS — pour coloriser les blocs run. */
+export const STATUS_BG = {
+  'a-faire':  'bg-gray-100',
+  'en-cours': 'bg-fv-orange-light',
+  fait:       'bg-fv-green-light',
+  bug:        'bg-red-100',
+  evolution:  'bg-purple-100',
+  'en-pause': 'bg-fv-blue-light',
+  clos:       'bg-fv-green-light',
+};

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { runsApi } from '../../api/resources.js';
-import { formatDateTime, formatDuration } from '../../engine/formatUtils.js';
+import { STATUS_BG, formatDateTime, formatDuration } from '../../engine/formatUtils.js';
 import useRunTimer from '../../hooks/useRunTimer.js';
 import { useStore } from '../../store/useStore.js';
 import CommentsPanel from '../comments/CommentsPanel.jsx';
@@ -201,7 +201,7 @@ function RunRow({ run, checklist = [], busy, onStatusChange, onChecklistSet, onD
   const hasChecklist = checklist.length > 0;
 
   return (
-    <li className="rounded-md border border-fv-border bg-white p-3">
+    <li className={`rounded-md border border-fv-border p-3 ${STATUS_BG[run.status] ?? 'bg-white'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusSelect

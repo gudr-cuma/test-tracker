@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { casesApi } from '../../api/resources.js';
+import { casesApi, runsApi } from '../../api/resources.js';
 import { useStore, selectCurrentPlan } from '../../store/useStore.js';
 import { useAuthStore } from '../../store/useAuthStore.js';
 import { exportCasesToXlsx } from '../../lib/exportXlsx.js';
@@ -35,7 +35,6 @@ function loadPanelWidth() {
  */
 export default function CasesView({ planId }) {
   const plan = useStore(selectCurrentPlan);
-  const canImport = useAuthStore((s) => s.user?.can_import);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,6 +51,14 @@ export default function CasesView({ planId }) {
   const [panelWidth, setPanelWidth] = useState(loadPanelWidth);
   const resizingRef = useRef(false);
 
+  // ─── Mode test ───────────────────────────────────────────────────────────
+  const user = useAuthStore((s) => s.user);
+  const canImport = user?.can_import;
+  const isOwner = plan?.owner_id === user?.id;
+  const [testMode, setTestMode] = useState(false);
+  const [testConfirm, setTestConfirm] = useState(null); // { caseItem } | null
+  const activeModeRunRef = useRef(null); // { runId, caseId } | null
+
   useEffect(() => {
     try {
       localStorage.setItem(PANEL_WIDTH_KEY, String(panelWidth));
@@ -67,6 +74,60 @@ export default function CasesView({ planId }) {
     } else {
       history.replaceState({}, '', `?plan=${encodeURIComponent(planId)}`);
     }
+  }
+
+  // Cleanup mode test à l'unmount
+  useEffect(() => {
+    return () => {
+      if (activeModeRunRef.current) {
+        runsApi.timer(activeModeRunRef.current.runId, 'stop').catch(() => {});
+      }
+    };
+  }, []);
+
+  // Intercept le clic de ligne : en mode test, affiche la confirmation
+  function handleCaseSelect(id) {
+    if (!testMode) { selectCase(id); return; }
+    const caseItem = cases.find((c) => c.id === id);
+    if (caseItem) setTestConfirm({ caseItem });
+  }
+
+  function handleTestDeny() {
+    const { caseItem } = testConfirm;
+    setTestConfirm(null);
+    selectCase(caseItem.id);
+  }
+
+  async function handleTestConfirm() {
+    const { caseItem } = testConfirm;
+    setTestConfirm(null);
+    selectCase(caseItem.id);
+
+    // Arrêter le run précédent si besoin
+    if (activeModeRunRef.current) {
+      await runsApi.timer(activeModeRunRef.current.runId, 'stop').catch(() => {});
+      activeModeRunRef.current = null;
+    }
+
+    // Chercher un run non clos sur ce cas
+    const NON_CLOSED = new Set(['a-faire', 'en-cours']);
+    let runId;
+    try {
+      const res = await runsApi.list(planId, caseItem.id);
+      const open = (res.runs || []).find((r) => NON_CLOSED.has(r.status));
+      if (open) {
+        await runsApi.timer(open.id, 'start');
+        runId = open.id;
+      } else {
+        const created = await runsApi.create(planId, caseItem.id, { status: 'en-cours' });
+        runId = created.run?.id || created.id;
+      }
+    } catch (e) {
+      console.error('[Mode test] Erreur création/reprise run :', e);
+      return;
+    }
+
+    activeModeRunRef.current = { runId, caseId: caseItem.id };
   }
 
   const isFirstLoad = useRef(true);
@@ -241,6 +302,37 @@ export default function CasesView({ planId }) {
           >
             ⬇ Export xlsx
           </Button>
+          {isOwner ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={testMode}
+              onClick={() => {
+                if (testMode && activeModeRunRef.current) {
+                  runsApi.timer(activeModeRunRef.current.runId, 'stop').catch(() => {});
+                  activeModeRunRef.current = null;
+                }
+                setTestMode((v) => !v);
+              }}
+              className={[
+                'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors select-none',
+                testMode
+                  ? 'bg-fv-orange text-white'
+                  : 'bg-fv-bg-secondary text-fv-text-secondary hover:text-fv-text border border-fv-border',
+              ].join(' ')}
+            >
+              <span className={[
+                'relative inline-block h-3.5 w-7 rounded-full transition-colors',
+                testMode ? 'bg-white/30' : 'bg-gray-300',
+              ].join(' ')}>
+                <span className={[
+                  'absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-transform',
+                  testMode ? 'translate-x-3.5' : 'translate-x-0.5',
+                ].join(' ')} />
+              </span>
+              Mode test
+            </button>
+          ) : null}
           <Button variant="primary" onClick={() => setNewCaseOpen(true)}>
             + Nouveau cas
           </Button>
@@ -281,7 +373,7 @@ export default function CasesView({ planId }) {
             <CasesTable
               cases={filtered}
               selectedId={selectedId}
-              onSelect={selectCase}
+              onSelect={handleCaseSelect}
               groupBy={groupBy}
               onRefresh={reload}
             />
@@ -325,6 +417,25 @@ export default function CasesView({ planId }) {
           onCreated={handleCaseCreated}
           onClose={() => setNewCaseOpen(false)}
         />
+      ) : null}
+
+      {testConfirm ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="rounded-lg bg-white p-6 shadow-xl w-80">
+            <p className="text-sm font-medium text-fv-text mb-1">Mode test</p>
+            <p className="text-sm text-fv-text-secondary mb-4">
+              Démarrer un run pour{' '}
+              <span className="font-semibold">
+                {testConfirm.caseItem.title || testConfirm.caseItem.id}
+              </span>{' '}
+              ?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={handleTestDeny}>Non</Button>
+              <Button variant="primary" size="sm" onClick={handleTestConfirm}>Oui</Button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
