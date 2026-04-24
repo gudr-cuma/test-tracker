@@ -63,11 +63,12 @@ export default function ProjectDashboard({ projectId }) {
   return (
     <div className="flex flex-col gap-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <KpiTile label="Total cas" value={totals.cases ?? 0} />
         <KpiTile label="Terminés" value={totals.done ?? 0} />
         <KpiTile label="Avancement moyen" value={`${avgPct}%`} highlight />
         <KpiTile label="En bug" value={totals.bug ?? 0} danger />
+        <KpiTile label="Évolutions" value={totals.evolution ?? 0} evolution />
         <KpiTile label="Temps cumulé" value={formatDuration(totals.total_time_ms || 0)} />
       </div>
 
@@ -166,11 +167,11 @@ export default function ProjectDashboard({ projectId }) {
   );
 }
 
-function KpiTile({ label, value, highlight, danger }) {
+function KpiTile({ label, value, highlight, danger, evolution }) {
   return (
     <div className="rounded-lg border border-fv-border bg-white px-4 py-3">
       <dt className="text-xs font-medium uppercase tracking-wide text-fv-text-secondary">{label}</dt>
-      <dd className={`mt-1 text-2xl font-bold ${danger ? 'text-fv-red' : highlight ? 'text-fv-orange' : 'text-fv-text'}`}>
+      <dd className={`mt-1 text-2xl font-bold ${danger ? 'text-fv-red' : evolution ? 'text-purple-600' : highlight ? 'text-fv-orange' : 'text-fv-text'}`}>
         {value}
       </dd>
     </div>
