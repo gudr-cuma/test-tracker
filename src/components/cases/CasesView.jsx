@@ -113,8 +113,11 @@ export default function CasesView({ planId }) {
       // Filtre bug / évolution
       const bugs = c.bug_count || 0;
       const evols = c.evolution_count || 0;
+      // 'bug'       = a des runs bug (peut aussi avoir des évolutions)
+      // 'evolution' = a des évolutions mais PAS de bugs (exclusif)
+      // 'both'      = a les deux types de runs
       if (bugFilter === 'bug'       && bugs <= 0) return false;
-      if (bugFilter === 'evolution' && evols <= 0) return false;
+      if (bugFilter === 'evolution' && (evols <= 0 || bugs > 0)) return false;
       if (bugFilter === 'both'      && (bugs <= 0 || evols <= 0)) return false;
 
       if (q) {

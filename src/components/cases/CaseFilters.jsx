@@ -63,8 +63,8 @@ export default function CaseFilters({
       >
         <option value="">Avec ou sans</option>
         <option value="bug">Avec bug</option>
-        <option value="evolution">Avec évolution</option>
-        <option value="both">Avec les 2</option>
+        <option value="evolution">Évolution (sans bug)</option>
+        <option value="both">Bug ET évolution</option>
       </select>
 
       <select
