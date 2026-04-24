@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,6 +16,10 @@ import { STATUS_CHART_COLORS, STATUS_ORDER } from './statsColors.js';
  * Barres empilées horizontales : une ligne par famille, un segment par statut.
  * `byFamily`     : { 'AUTH': { 'a-faire': 2, fait: 5, … }, … }
  * `byFamilyTime` : { 'AUTH': 5400000, … }  (ms)
+ *
+ * Le temps par famille est affiché via un <LabelList> sur une barre
+ * transparente (stackId distinct), ce qui évite les problèmes de hover
+ * causés par un double YAxis.
  */
 export default function FamilyBar({ byFamily = {}, byFamilyTime = {} }) {
   const data = useMemo(() => {
@@ -42,7 +47,6 @@ export default function FamilyBar({ byFamily = {}, byFamilyTime = {} }) {
     );
   }
 
-  // Barres plus fines + espacement réduit : 16 px par barre, 28 px par ligne
   const barSize = 14;
   const rowHeight = 28;
   const height = Math.max(160, data.length * rowHeight + 48);
@@ -59,9 +63,7 @@ export default function FamilyBar({ byFamily = {}, byFamilyTime = {} }) {
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" horizontal={false} />
 
-          {/* Axe familles (gauche) */}
           <YAxis
-            yAxisId="left"
             type="category"
             dataKey="family"
             width={72}
@@ -70,21 +72,7 @@ export default function FamilyBar({ byFamily = {}, byFamilyTime = {} }) {
             axisLine={false}
           />
 
-          {/* Axe temps par famille (droite) — ticks affichent le temps cumulé */}
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            type="category"
-            dataKey="time_label"
-            width={44}
-            tick={{ fontSize: 10, fill: '#A0AEC0' }}
-            tickLine={false}
-            axisLine={false}
-          />
-
-          {/* Axe valeurs (bas) */}
           <XAxis
-            yAxisId="left"
             type="number"
             allowDecimals={false}
             tick={{ fontSize: 10, fill: '#718096' }}
@@ -97,12 +85,13 @@ export default function FamilyBar({ byFamily = {}, byFamilyTime = {} }) {
             contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #E2E8F0' }}
             itemSorter={(item) => -item.value}
             formatter={(value, name) => [value, STATUS_LABELS[name] || name]}
+            // Exclure la barre fantôme du tooltip
+            filterNull={false}
           />
 
           {STATUS_ORDER.map((s, i) => (
             <Bar
               key={s}
-              yAxisId="left"
               dataKey={s}
               name={STATUS_LABELS[s] || s}
               stackId="status"
@@ -111,6 +100,24 @@ export default function FamilyBar({ byFamily = {}, byFamilyTime = {} }) {
               isAnimationActive={false}
             />
           ))}
+
+          {/* Barre fantôme invisible dont le seul rôle est de porter le LabelList
+              avec le temps par famille, positionné à la droite du total. */}
+          <Bar
+            dataKey="_total"
+            stackId="ghost"
+            fill="transparent"
+            stroke="transparent"
+            isAnimationActive={false}
+            legendType="none"
+            tooltipType="none"
+          >
+            <LabelList
+              dataKey="time_label"
+              position="right"
+              style={{ fontSize: 10, fill: '#A0AEC0' }}
+            />
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
