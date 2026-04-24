@@ -77,7 +77,28 @@ export async function onRequest(context) {
     )
     .bind(planId).all();
 
-  // 4. Temps total pass� sur le plan (somme de tous les intervalles).
+  // 4. Temps par famille (somme des intervalles de chaque run des cas de la famille)
+  const byFamilyTime = {};
+  try {
+    const { results: famTimeRows } = await db
+      .prepare(
+        `SELECT c.family,
+                COALESCE(SUM(
+                  (julianday(COALESCE(rti.ended_at, 'now')) - julianday(rti.started_at)) * 86400000
+                ), 0) AS total_ms
+         FROM run_time_intervals rti
+         JOIN runs r ON r.id = rti.run_id
+         JOIN cases c ON c.id = r.case_id AND c.plan_id = r.plan_id
+         WHERE r.plan_id = ?
+         GROUP BY c.family`,
+      )
+      .bind(planId).all();
+    for (const row of famTimeRows) {
+      byFamilyTime[row.family] = Math.round(row.total_ms || 0);
+    }
+  } catch { /* migration 0011 pas jou\u00e9e */ }
+
+  // 5. Temps total pass� sur le plan (somme de tous les intervalles).
   let totalTimeMs = 0;
   try {
     const row = await db
@@ -100,6 +121,7 @@ export async function onRequest(context) {
       total_time_ms: totalTimeMs,
     },
     byFamily,
+    byFamilyTime,
     cumulative: cumulativeSeries,
     instability: instabilityRows.results,
   });
