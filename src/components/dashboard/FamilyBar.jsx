@@ -93,6 +93,7 @@ export default function FamilyBar({ byFamily = {}, byFamilyTime = {} }) {
           />
 
           <Tooltip
+            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
             contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #E2E8F0' }}
             itemSorter={(item) => -item.value}
             formatter={(value, name) => [value, STATUS_LABELS[name] || name]}
